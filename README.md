@@ -1,2 +1,4 @@
 # doyen
-Bits and code for a dean coder 
+Bits and codes for dean coders
+
+Import in a Cuis-Smalltalk-Dev repository.
