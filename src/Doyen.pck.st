@@ -1,9 +1,29 @@
-'From Cuis7.0 [latest update: #6452] on 19 April 2025 at 2:14:02 pm'!
+'From Cuis7.0 [latest update: #6452] on 21 April 2025 at 1:43:56 pm'!
 'Description '!
-!provides: 'Doyen' 1 26!
+!provides: 'Doyen' 1 30!
 SystemOrganization addCategory: #'Doyen-Classes'!
 SystemOrganization addCategory: #'Doyen-Org'!
 
+
+!classDefinition: #ClasseView category: #'Doyen-Classes'!
+LayoutMorph subclass: #ClasseView
+	instanceVariableNames: 'model'
+	classVariableNames: ''
+	poolDictionaries: ''
+	category: 'Doyen-Classes'!
+!classDefinition: 'ClasseView class' category: #'Doyen-Classes'!
+ClasseView class
+	instanceVariableNames: ''!
+
+!classDefinition: #VoleeWindow category: #'Doyen-Classes'!
+SystemWindow subclass: #VoleeWindow
+	instanceVariableNames: 'scoreLabel qtyEntry'
+	classVariableNames: ''
+	poolDictionaries: ''
+	category: 'Doyen-Classes'!
+!classDefinition: 'VoleeWindow class' category: #'Doyen-Classes'!
+VoleeWindow class
+	instanceVariableNames: ''!
 
 !classDefinition: #Classe category: #'Doyen-Classes'!
 Object subclass: #Classe
@@ -37,8 +57,8 @@ GroupeOption class
 
 !classDefinition: #Volee category: #'Doyen-Classes'!
 Object subclass: #Volee
-	instanceVariableNames: 'eleves classes sections elevesEnsemble voleePreferee csvClasses csvEleves csvContraintesEleves elevesBackup classesBackup elevesEnsembleBackup'
-	classVariableNames: ''
+	instanceVariableNames: 'eleves classes elevesEnsemble voleePreferee'
+	classVariableNames: 'Classes Eleves'
 	poolDictionaries: ''
 	category: 'Doyen-Classes'!
 !classDefinition: 'Volee class' category: #'Doyen-Classes'!
@@ -132,6 +152,83 @@ Les données sont importées et ventillées dans
 
 Pour les 9e, les données sont importées de SMOG et du tableau de recueil recommandations issues
 de l'école primaire.!
+
+!ClasseView methodsFor: 'accessing' stamp: 'hlsf 4/20/2025 11:56:11'!
+model: uneClasse
+	model := uneClasse ! !
+
+!ClasseView methodsFor: 'initialization' stamp: 'hlsf 4/20/2025 12:51:54'!
+initialize
+	super initialize.
+	self beColumn.
+	self addMorph: (TextParagraphMorph contents: model printString bold).
+	model eleves do: [:unEleve | | coloring |
+		coloring := unEleve estGarcon ifTrue: [#blue]  ifFalse: [#magenta]. 
+		self addMorph: (
+			TextParagraphMorph 
+				contents: (unEleve printString perform: coloring)
+		)
+	]! !
+
+!ClasseView class methodsFor: 'as yet unclassified' stamp: 'hlsf 4/20/2025 12:05:13'!
+on: uneClasse
+	^ self basicNew 
+		model: uneClasse;
+		initialize ! !
+
+!VoleeWindow methodsFor: 'GUI building' stamp: 'hlsf 4/21/2025 10:59:35'!
+buildMorphicWindow
+ | row |
+	
+	scoreLabel := LabelMorph contents: 'Auncun score, calculer au moins une volée'.
+	qtyEntry := TextModelMorph withText: '1' ::
+		morphExtent: 50@0;
+		wrapFlag: false;
+		acceptOnCR: true;
+		hideScrollBarsIndefinitely.
+	row := LayoutMorph newRow.
+	row addMorph: (LabelMorph contents: 'Nombre de volées à calculer : ');
+		addMorph: qtyEntry ;
+		addMorph: (PluggableButtonMorph model: self action: #compute label: 'Calculer');
+		addMorph: scoreLabel;
+		addMorph: ((PluggableButtonMorph model: model action: #exporterClasses label: 'Enregistrer')
+			setBalloonText: 'Enregistrer cette volée sous la forme d''une collection de fichiers csv, un par classe.').
+	self addMorph: row layoutSpec: LayoutSpec new useMorphHeight! !
+
+!VoleeWindow methodsFor: 'updating' stamp: 'hlsf 4/20/2025 20:08:23'!
+update: aspect
+	super update: aspect.
+	aspect == #voleePreferee ifTrue: [
+		scoreLabel contents: model voleePreferee resume 		]
+		! !
+
+!VoleeWindow methodsFor: 'ui' stamp: 'hlsf 4/21/2025 10:46:14'!
+compute
+	| nbFois progress |
+	qtyEntry editor acceptContents.
+	nbFois := [qtyEntry text asNumber] 
+		on: Error 
+		do: [^ self inform: 'Essayer de saisir quelque chose
+qui ressemble à un nombre'].
+	(nbFois isInteger and: [nbFois positive ]) ifFalse: [
+		^ self inform: 'Essayer avec un nombre 
+entier et positif'].
+	
+	progress := ProgressMorph 		label: 'Calcul des volées en cours'.
+	progress openInWorld.
+	[ | step |
+		step := 1 / nbFois.
+		1 to: nbFois do: [:indice |
+			progress 		incrDone: step;
+				subLabel: ('calcul volée ', indice printString, '...').			
+			model calculer].
+		progress delete] forkAt: Processor userBackgroundPriority ! !
+
+!VoleeWindow class methodsFor: 'as yet unclassified' stamp: 'hlsf 4/21/2025 10:18:30'!
+open: uneVolee
+	^ self 
+		open: uneVolee 
+		label: 'Conception de volée'! !
 
 !Classe methodsFor: 'accessing' stamp: 'hlsf 6/30/2024 13:19:55'!
 ajouterEleve: unEleve
@@ -316,6 +413,11 @@ sontCompatibles: unEnsemble
 	^ nom size < uneClasse nom size 
 	or: [nom <= uneClasse nom]! !
 
+!Classe methodsFor: 'copying' stamp: 'hlsf 4/21/2025 11:58:56'!
+postCopy
+	eleves := SortedCollection new.
+ ! !
+
 !Classe class methodsFor: 'instance creation' stamp: 'hlsf 7/1/2024 08:19:44'!
 importer: fichierCSV
 	^ (NeoCSVReader on: (DirectoryEntry projectBaseDirectory / 'import' // fichierCSV) readStream)
@@ -434,6 +536,13 @@ nom: anObject
 note
 	^ note! !
 
+!Eleve methodsFor: 'accessing' stamp: 'hlsf 4/21/2025 10:03:16'!
+note: aStringOrNumber
+	aStringOrNumber ifNil: [^ self].
+	note := aStringOrNumber isNumber 
+		ifTrue: [aStringOrNumber ]
+		ifFalse: [ [aStringOrNumber asNumber] on: Error  do: nil ]	! !
+
 !Eleve methodsFor: 'accessing' stamp: 'hlsf 4/18/2025 23:58:54'!
 option
 	"Answer the value of option"
@@ -464,13 +573,6 @@ prenom: anObject
 	"Set the value of prénom"
 
 	prenom := anObject  asLowercase asUnaccented asUppercase ! !
-
-!Eleve methodsFor: 'accessing' stamp: 'hlsf 4/19/2025 13:13:22'!
-score: aStringOrNumber
-	aStringOrNumber ifNil: [^ self].
-	note := aStringOrNumber isNumber 
-		ifTrue: [aStringOrNumber ]
-		ifFalse: [ [aStringOrNumber asNumber] on: Error  do: nil ]	! !
 
 !Eleve methodsFor: 'accessing' stamp: 'hlsf 6/30/2024 10:18:00'!
 sections
@@ -583,39 +685,45 @@ initialize
 	note := 14.
 	mobile := true.! !
 
-!Eleve class methodsFor: 'instance creation' stamp: 'hlsf 4/18/2025 15:24:40'!
+!Eleve methodsFor: 'copying' stamp: 'hlsf 4/21/2025 13:14:12'!
+postCopy
+	classeAttribuee := classeAttribuee copy.
+	classesExclues := classesExclues copy.
+	separerDe := separerDe copy.
+	mettreAvec := mettreAvec copy! !
+
+!Eleve class methodsFor: 'instance creation' stamp: 'hlsf 4/21/2025 10:36:14'!
 importer: fichierCSV
-"
-	Importer données extraites de SMOG avec les champs Nom, Prénom, Sexe, Statut, AncienGroupe
-"
-	^ (NeoCSVReader on: (DirectoryEntry projectBaseDirectory / 'import' // fichierCSV) readStream)
+" Importer données extraites de SMOG avec les champs Nom, Prénom, Sexe, Statut, AncienGroupe "
+	| eleves |
+	eleves := (NeoCSVReader on: (DirectoryEntry projectBaseDirectory / 'import' // fichierCSV) readStream)
 		separator: $; ;
 		skipHeader ;
 		recordClass: self ;
 		addFields:  #(nom: prenom: );
 		addField: #sexe: converter: [:sexe | sexe first];
-		addFields: #(sections: ancienneClasse: score:);
+		addFields: #(sections: ancienneClasse: note:);
 		addIgnoredFields: 2;
-		upToEnd! !
+		upToEnd.
+	^ (eleves select: [:record | record estValide ]) asOrderedCollection! !
 
-!Eleve class methodsFor: 'instance creation' stamp: 'hlsf 4/18/2025 15:20:47'!
+!Eleve class methodsFor: 'instance creation' stamp: 'hlsf 4/21/2025 10:12:56'!
 importerContraintes: fichierCSV
-"
-	Importation des données issues du relevé d'information en école primaire et autres
-
-"
-	^ (NeoCSVReader on: (DirectoryEntry projectBaseDirectory / 'import' // fichierCSV) readStream)
+" Importation des données issues du relevé d'information en école primaire et autres "
+	| eleves |
+	eleves := (NeoCSVReader on: (DirectoryEntry projectBaseDirectory / 'import' // fichierCSV) readStream)
 		separator: $; ;
 		skipHeader ;
 		recordClass: self ;
 		addFields:  #(#ancienneClasse: #nom: #prenom:);
 		addField: #sexe: converter: [:sexe | sexe first];
 		addIgnoredFields: 2 ;
-		addFields: #( #score: #sections: );
+		addFields: #( #note: #sections: );
 		addIgnoredField ;
 		addField: #dys: converter: [:dys | dys ifNil: [false] ifNotNil: [				dys = '1'] 				];
 		addFields: #(#classeAttribuee: #classesExclues: #separerDe: #mettreAvec:);
-		upToEnd! !
+		upToEnd.
+	^ (eleves select: [:record | 		record estValide ]) asOrderedCollection! !
 
 !GroupeOption methodsFor: 'accessing' stamp: 'hlsf 4/18/2025 12:43:54'!
 classe
@@ -698,24 +806,6 @@ importer: fichierCSV
 classes
 	^ classes! !
 
-!Volee methodsFor: 'accessing' stamp: 'hlsf 4/18/2025 14:57:34'!
-csvClasses: unFichier
-	csvClasses := unFichier ! !
-
-!Volee methodsFor: 'accessing' stamp: 'hlsf 4/18/2025 14:57:42'!
-csvContraintesEleves: unFichier
-	csvContraintesEleves := unFichier! !
-
-!Volee methodsFor: 'accessing' stamp: 'hlsf 4/18/2025 14:57:49'!
-csvEleves: unFichier
-	csvEleves := unFichier! !
-
-!Volee methodsFor: 'accessing' stamp: 'hlsf 6/30/2024 10:16:21'!
-filtrerSections: filtreSections
-" Retirer les classes et les élèves qui ne sont pas dans la collection filtreSections "
-	classes := classes select: [:uneClasse |  filtreSections includesAnyOf: uneClasse sections].
-	eleves := eleves select: [:unEleve | filtreSections includesAnyOf: unEleve sections]! !
-
 !Volee methodsFor: 'accessing' stamp: 'hlsf 4/18/2025 23:35:54'!
 mettreAvec: unEleve
 "
@@ -726,19 +816,17 @@ mettreAvec: unEleve
 		detect: [:ensemble | ensemble includes: unEleve ] 
 		ifNone: [Array with: unEleve ]! !
 
-!Volee methodsFor: 'accessing-classes' stamp: 'hlsf 6/29/2024 16:46:13'!
-classesAuHasard
-	^ self classesAvecPlace atRandom! !
+!Volee methodsFor: 'accessing' stamp: 'hlsf 4/20/2025 13:17:28'!
+voleePreferee
+	^ voleePreferee ! !
 
 !Volee methodsFor: 'accessing-classes' stamp: 'hlsf 6/29/2024 16:39:56'!
 classesAvecPlace
 	^ classes select: [:each | each estPleine not]! !
 
-!Volee methodsFor: 'accessing-classes' stamp: 'hlsf 4/18/2025 17:32:08'!
+!Volee methodsFor: 'accessing-classes' stamp: 'hlsf 4/21/2025 10:24:18'!
 trouverClasse: nom
-	^ classes 
-		detect: [:uneClasse | uneClasse nom includesSubString: nom ]
-		ifNone: [self error: 'Classe "', nom ,'" inexistante']! !
+	^ self class trouverClasse: nom dans: classes! !
 
 !Volee methodsFor: 'accessing-eleves' stamp: 'hlsf 6/29/2024 17:04:49'!
 effectifClasses
@@ -760,23 +848,9 @@ elevesDys
 elevesSansClasse
 	^ eleves difference: self elevesDansClasses! !
 
-!Volee methodsFor: 'accessing-eleves' stamp: 'hlsf 7/1/2024 11:30:22'!
+!Volee methodsFor: 'accessing-eleves' stamp: 'hlsf 4/21/2025 10:10:17'!
 trouverEleve: unPatronyme
-	^ self trouverEleve: unPatronyme dans: eleves! !
-
-!Volee methodsFor: 'accessing-eleves' stamp: 'hlsf 7/1/2024 11:30:41'!
-trouverEleve: unPatronyme dans: listeEleves
-" 
-	Trouver l'élève par son patronyme dans listeEleves
-"
-	^ listeEleves detect: [:unEleve | unEleve match:  unPatronyme ] ifNone: [nil]! !
-
-!Volee methodsFor: 'affectations' stamp: 'hlsf 6/30/2024 13:10:33'!
-ventilerAuHasard: desEleves
-	desEleves do: [:unEleve | 		self classesAuHasard ajouterEleve: unEleve].
-	eleves removeAll: desEleves 
-		
-		! !
+	^ self class trouverEleve: unPatronyme dans: eleves! !
 
 !Volee methodsFor: 'affectations' stamp: 'hlsf 4/18/2025 23:38:29'!
 ventilerElevesDys
@@ -825,8 +899,12 @@ ventilerSelonSexe
 			]
 		! !
 
-!Volee methodsFor: 'import/export' stamp: 'hlsf 7/2/2024 12:02:09'!
+!Volee methodsFor: 'export' stamp: 'hlsf 4/21/2025 10:59:57'!
 exporterClasses
+	voleePreferee ifNil: [^ self inform: 'Aucune volée n''a été calculée,
+par conséquent rien ne peut être sauvegardé.
+Essayer de calculer au moins une volée !!'].
+
 	voleePreferee classes do: [:uneClasse | 	| stream writer fichier |
 		fichier := DirectoryEntry projectBaseDirectory / 'export' // (uneClasse nom, '.csv').
 		fichier delete.
@@ -836,45 +914,8 @@ exporterClasses
 			fieldWriter: #raw;
 			nextPut: #(NOM PRENOM SEXE).
 		uneClasse eleves do: [:unEleve | 			writer nextPut: {unEleve nom . unEleve prenom . unEleve sexe}		].
-		stream close]! !
-
-!Volee methodsFor: 'import/export' stamp: 'hlsf 4/19/2025 13:12:55'!
-fusionnerContraintesEleves
-	| infoEleves |
-	self assert: classes notNil description: 'Importer classes avant élèves'.
-	self assert: eleves notNil description: 'Importer eleves de SMOG avant données élèves'.
-	infoEleves := ((Eleve importerContraintes: csvContraintesEleves ) select: [:record | 
-		record estValide ]) asOrderedCollection.
-	" Fusionner les données des élèves "
-	eleves do: [:unEleve | | uneInfo |
-		uneInfo := self trouverEleve: unEleve patronyme dans: infoEleves.
-		uneInfo 
-			ifNotNil:  [
-				unEleve 
-					classeAttribuee: uneInfo classeAttribuee ;
-					classesExclues: uneInfo classesExclues ;
-					dys: uneInfo estDys;
-					ancienneClasse: uneInfo ancienneClasse ;
-					mettreAvec: uneInfo mettreAvec ;
-					separerDe: uneInfo separerDe ;
-					score: uneInfo note 				]
-			ifNil: [Transcript show: unEleve; show: ' données NON trouvées'; cr		]
-		]! !
-
-!Volee methodsFor: 'import/export' stamp: 'hlsf 4/18/2025 17:42:40'!
-importerClasses
-	classes := Classe importer: csvClasses ! !
-
-!Volee methodsFor: 'import/export' stamp: 'hlsf 4/18/2025 17:43:13'!
-importerEleves
-" Données élèves issues de SMOG "
-	eleves := ((Eleve importer: csvEleves) select: [:record | record estValide ]) asOrderedCollection! !
-
-!Volee methodsFor: 'initialization' stamp: 'hlsf 4/19/2025 13:05:23'!
-backup
-	elevesBackup := eleves veryDeepCopy.
-	classesBackup := classes veryDeepCopy.
-	elevesEnsembleBackup :=  elevesEnsemble veryDeepCopy.! !
+		stream close].
+	self inform: 'Volée sauvegardée dans le dossier "export".'! !
 
 !Volee methodsFor: 'initialization' stamp: 'hlsf 4/18/2025 23:29:18'!
 calculer
@@ -888,12 +929,12 @@ calculer
 	self verifierScore.
 ! !
 
-!Volee methodsFor: 'initialization' stamp: 'hlsf 6/29/2024 16:25:21'!
+!Volee methodsFor: 'initialization' stamp: 'hlsf 4/21/2025 12:02:11'!
 collecterElevesEnsemble
 " Collection d'élève à mettre ensemble "
 	elevesEnsemble := (	eleves 
 		select: [:each | each mettreAvec notNil] 
-		thenCollect:[:unEleve | 		unEleve mettreAvec asSet add: unEleve; yourself			 ]	) asSet.
+		thenCollect:[:unEleve | 		unEleve mettreAvec asSet add: unEleve; yourself	 ]	) asSet.
 	elevesEnsemble do: [:unGroupe | 
 		elevesEnsemble do: [:anotherGroup |
 			unGroupe == anotherGroup ifFalse: [
@@ -901,11 +942,6 @@ collecterElevesEnsemble
 	elevesEnsemble := elevesEnsemble collect: [:each | each asSet]
 		
 	! !
-
-!Volee methodsFor: 'initialization' stamp: 'hlsf 4/19/2025 12:39:58'!
-filtrer
-" Les volées sont parfois élaborérs par différents doyen, pour certains niveaux "
-! !
 
 !Volee methodsFor: 'initialization' stamp: 'hlsf 4/19/2025 12:50:08'!
 initElevesEnsemble
@@ -957,7 +993,7 @@ initPreattribuerClasses
 			classe ajouterEleve: unEleve.
 			Transcript show: unEleve; show: 					' à placer en classe '; show: 				classe; cr]! !
 
-!Volee methodsFor: 'initialization' stamp: 'hlsf 6/30/2024 11:07:11'!
+!Volee methodsFor: 'initialization' stamp: 'hlsf 4/21/2025 12:00:19'!
 initPreexclureClasses
 "
 	Des élèves se voient préexcluent de certaines classes
@@ -967,39 +1003,21 @@ initPreexclureClasses
 	eleves 
 		select: [:each | each classesExclues notNil] 
 		thenDo: [:unEleve | | sesClassesExclues |
-			sesClassesExclues := unEleve classesExclues virguleSeparer 				collect: [:unNom | 									self trouverClasse: unNom ].
+			sesClassesExclues := unEleve classesExclues virguleSeparer 				collect: [:unNom | 				self trouverClasse: unNom ].
 			unEleve classesExclues: sesClassesExclues.
 			Transcript show: unEleve; show: ' est à exclure des classes '; show: sesClassesExclues; cr 				]! !
 
-!Volee methodsFor: 'initialization' stamp: 'hlsf 4/19/2025 13:07:32'!
-isBackedUp
-	^ elevesBackup notNil! !
-
-!Volee methodsFor: 'initialization' stamp: 'hlsf 4/19/2025 13:07:58'!
+!Volee methodsFor: 'initialization' stamp: 'hlsf 4/21/2025 13:40:24'!
 preparerDonnees
-
-	self isBackedUp ifTrue:[ ^ self restoreBackup ].
-	
-	self importerClasses.
-	self importerEleves.
-	self fusionnerContraintesEleves.
-	sections := Set new.
-	classes do: [:chaque | sections addAll: chaque sections].
-	self	filtrer;
-		initPreattribuerClasses;
+	eleves := self class eleves shuffled.
+	classes := self class classes shuffled.
+	self	initPreattribuerClasses;
 		initPreexclureClasses;
 		initElevesEnsemble ;
 		initElevesSepares;
-		collecterElevesEnsemble.
-	self backup ! !
+		collecterElevesEnsemble! !
 
-!Volee methodsFor: 'initialization' stamp: 'hlsf 4/19/2025 13:06:23'!
-restoreBackup
-	eleves := elevesBackup veryDeepCopy.
-	classes := classesBackup veryDeepCopy.
-	elevesEnsemble :=  elevesEnsembleBackup veryDeepCopy.! !
-
-!Volee methodsFor: 'initialization' stamp: 'hlsf 4/19/2025 13:16:36'!
+!Volee methodsFor: 'initialization' stamp: 'hlsf 4/20/2025 13:57:38'!
 verifierScore
 " Nous cherchons la volée avec le meilleur score "
 	^ (voleePreferee isNil 
@@ -1007,7 +1025,7 @@ verifierScore
 		ifTrue: [
 			'\o/ Volée avec un meilleur arrangement !!' print.
 			voleePreferee := self veryDeepCopy.
-			voleePreferee inspect		]! !
+			self changed: #voleePreferee		]! !
 
 !Volee methodsFor: 'metric' stamp: 'hlsf 4/19/2025 13:12:55'!
 ecartType
@@ -1038,15 +1056,15 @@ note
 " La note moyenne de toutes les classes pour MA, FR ALL "
 	^ [(classes sum: [:uneClasse | uneClasse note]) / self nbClasses ] on: Error do: 0! !
 
-!Volee methodsFor: 'metric' stamp: 'hlsf 4/19/2025 14:06:27'!
+!Volee methodsFor: 'metric' stamp: 'hlsf 4/21/2025 13:42:01'!
 scoring
 "
 	Métrique de [0 ; 1] pour comparer deux volées entre elles, le plus bas le meilleur
 "
 	| c1 c2 |
-	" 18 est la note maximale "
-	c1 := self ecartType / 18.
-	c2 := self elevesSeuls / 50.0 .
+	" 18 est la note maximale ⇒ σ ∈ [0 ; 9]"
+	c1 := self ecartType / 9.
+	c2 := self elevesSeuls / 38.0 .
 	^ (0.5 * c1) + (0.5 * c2) ! !
 
 !Volee methodsFor: 'testing' stamp: 'hlsf 7/2/2024 08:20:33'!
@@ -1085,7 +1103,7 @@ checkElevesSepares
 checks
 	^ self checkElevesEnsemble and: [self checkElevesSepares ]! !
 
-!Volee methodsFor: 'printing' stamp: 'hlsf 4/19/2025 13:14:26'!
+!Volee methodsFor: 'printing' stamp: 'hlsf 4/21/2025 12:28:29'!
 printOn: stream
 	stream nextPutAll: 'Élèves : '; 		print: self nbEleves ;
 		nextPut: Character lf;
@@ -1097,37 +1115,121 @@ printOn: stream
 		nextPut: Character lf;
 		nextPutAll: 'Note moy (MA+FR+AL): '; print: (self note printStringFractionDigits: 1);
 		nextPut: Character lf;
-		nextPutAll: 'Score : '; print: (self scoring printStringFractionDigits: 1);
+		nextPutAll: 'Score : '; print: (self scoring printStringFractionDigits: 2);
 		nextPut: Character lf;
 		nextPutAll: 'Ecart type : '; print: (self ecartType printStringFractionDigits: 2);
 		nextPut: Character lf;		
 		nextPutAll: 'Vérification: '; 		print: self checks;
 		nextPut: Character lf! !
 
-!Volee class methodsFor: 'instance creation' stamp: 'hlsf 4/18/2025 15:09:04'!
-classes: fichierClasses eleves:  fichierSmog contraintesEleves: fichierContraintesEleves
-	^ self new
-		csvClasses: fichierClasses;
-		csvEleves: fichierSmog ;
-		csvContraintesEleves: fichierContraintesEleves;
-		yourself
-	! !
+!Volee methodsFor: 'printing' stamp: 'hlsf 4/21/2025 11:09:29'!
+resume
+	^ String streamContents: [: str |
+	str nextPutAll: 'C'; 		print: self nbClasses;
+		nextPutAll: ' E'; 		print: self nbEleves  ;
+		nextPutAll: ' I'; 		print: self elevesSeuls ;
+		nextPutAll: ' X'; 		print: self elevesSansClasse size;
+		nextPutAll: ' Score='; nextPutAll: (self scoring printStringFractionDigits: 2);
+		nextPutAll: ' σ='; nextPutAll: (self ecartType printStringFractionDigits: 2);
+		nextPutAll: ' Vérif. '; 		print: self checks]! !
 
-!Volee10 methodsFor: 'import/export' stamp: 'hlsf 4/18/2025 17:51:53'!
-importerClasses
-	| groupes |
-	super importerClasses.
-	groupes := GroupeOption importer: 'groupes10e.csv'.
-	groupes do: [:unGroupe | (self trouverClasse: unGroupe classe) ajouterGroupe: unGroupe].
-	" Vérifier effectifs des groupes et classes "
-	classes do: [:classe |
-		classe effectif = classe effectifGroupes ifFalse:[ 
-			(classe nom, ' - effectif des groupes différent de la classe') print] ]
-		! !
+!Volee class methodsFor: 'import' stamp: 'hlsf 4/21/2025 10:08:51'!
+fusionnerContraintesEleves: fichierContraintesEleves
+	| infoEleves |
+	self assert: Classes notNil description: 'Importer classes d''abord'.
+	self assert: Eleves notNil description: 'Importer eleves de SMOG d''abord'.
+	infoEleves := Eleve importerContraintes: fichierContraintesEleves.
+	" Fusionner les contraintes dans Eleves "
+	Eleves do: [:unEleve | 
+		(self trouverEleve: unEleve patronyme dans: infoEleves)
+			ifNotNil:  [:infoEleve |
+				unEleve 
+					classeAttribuee: infoEleve classeAttribuee ;
+					classesExclues: infoEleve classesExclues ;
+					dys: infoEleve estDys;
+					ancienneClasse: infoEleve ancienneClasse ;
+					mettreAvec: infoEleve mettreAvec ;
+					separerDe: infoEleve separerDe ;
+					note: infoEleve note 				]
+			ifNil: [Transcript 
+					show: 'Pas de contrainte pour ';
+					show: unEleve; 			cr] ]! !
 
-!Volee9 methodsFor: 'initialization' stamp: 'hlsf 4/19/2025 14:13:55'!
+!Volee class methodsFor: 'import' stamp: 'hlsf 4/21/2025 10:21:51'!
+importerClasses: fichierClasses
+
+	Classes :=  Classe importer: fichierClasses! !
+
+!Volee class methodsFor: 'import' stamp: 'hlsf 4/21/2025 10:21:56'!
+importerEleves: fichierSmog
+
+	Eleves := Eleve importer: fichierSmog! !
+
+!Volee class methodsFor: 'instance creation' stamp: 'hlsf 4/21/2025 11:17:19'!
+classes: fichierClasses eleves:  fichierSmog contraintesEleves: fichierContraintes
+	self importerEleves: fichierSmog.
+	self importerClasses: fichierClasses.
+	self filtrer.
+	self fusionnerContraintesEleves: fichierContraintes .
+	^ self new	! !
+
+!Volee class methodsFor: 'accessing' stamp: 'hlsf 4/21/2025 13:40:02'!
+classes
+	^ Classes collect: [:uneClasse | uneClasse copy]! !
+
+!Volee class methodsFor: 'accessing' stamp: 'hlsf 4/21/2025 13:40:08'!
+eleves
+	^ Eleves collect: [:unEleve | unEleve copy] ! !
+
+!Volee class methodsFor: 'accessing' stamp: 'hlsf 4/21/2025 10:23:18'!
+trouverClasse: nom dans: classes
+	^ classes 
+		detect: [:uneClasse | uneClasse nom includesSubString: nom ]
+		ifNone: [self error: 'Classe "', nom ,'" inexistante']! !
+
+!Volee class methodsFor: 'accessing' stamp: 'hlsf 4/21/2025 13:22:31'!
+trouverEleve: unPatronyme dans: listeEleves
+" 
+	Trouver l'élève par son patronyme dans listeEleves
+"
+	^ listeEleves 
+		detect: [:unEleve | unEleve match:  unPatronyme ] 
+		ifNone: [nil]! !
+
+!Volee class methodsFor: 'filter' stamp: 'hlsf 4/21/2025 11:19:04'!
 filtrer
-	self	filtrerSections: #(R3 MI)! !
+" Les volées sont parfois élaborérs par différents doyen, 
+  chacun concevant certaines sections uniquement "
+
+	" self filtrerSections: #(R3 MI) "! !
+
+!Volee class methodsFor: 'filter' stamp: 'hlsf 4/21/2025 11:16:43'!
+filtrerSections: filtreSections
+" Retirer les classes et les élèves qui ne sont pas dans la collection filtreSections "
+	Classes := Classes select: [:uneClasse |  
+		filtreSections includesAnyOf: uneClasse sections].
+	Eleves := Eleves select: [:unEleve | 
+		filtreSections includesAnyOf: unEleve sections]! !
+
+!Volee10 class methodsFor: 'import' stamp: 'hlsf 4/21/2025 10:27:46'!
+importerClasses: fichierClasses
+	| groupes |
+	super importerClasses: fichierClasses.
+	groupes := GroupeOption importer: 'groupes10e.csv'.
+	groupes do: [:unGroupe | 
+		(self trouverClasse: unGroupe classe dans: Classes) 
+			ajouterGroupe: unGroupe].
+	" Vérifier effectifs des groupes et classes "
+	Classes do: [:classe |
+		classe effectif = classe effectifGroupes ifFalse: [ 
+			Transcript 
+				show:classe nom;
+				show: ' - effectif des groupes différent de la classe';
+				cr ] ]! !
+
+!Volee9 class methodsFor: 'filter' stamp: 'hlsf 4/21/2025 12:27:21'!
+filtrer
+	self filtrerSections: #(R3 MI)! !
 
 !SuiviEleve methodsFor: 'initialization' stamp: 'hlsf 7/26/2024 17:01:02'!
 initialize
