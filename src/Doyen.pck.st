@@ -1,6 +1,6 @@
-'From Cuis7.3 [latest update: #7099] on 21 April 2025 at 5:24:56 pm'!
+'From Cuis7.3 [latest update: #7099] on 22 April 2025 at 12:19:23 am'!
 'Description '!
-!provides: 'Doyen' 1 32!
+!provides: 'Doyen' 1 34!
 !requires: 'Neo-CSV-Core' 1 2 nil!
 !requires: 'UI-Panel' 1 123 nil!
 !requires: 'UI-Entry' 1 56 nil!
@@ -96,6 +96,16 @@ SystemWindow subclass: #VoleeWindow
 	category: 'Doyen-Classes'!
 !classDefinition: 'VoleeWindow class' category: #'Doyen-Classes'!
 VoleeWindow class
+	instanceVariableNames: ''!
+
+!classDefinition: #EleveView category: #'Doyen-Classes'!
+TextParagraphMorph subclass: #EleveView
+	instanceVariableNames: 'model'
+	classVariableNames: ''
+	poolDictionaries: ''
+	category: 'Doyen-Classes'!
+!classDefinition: 'EleveView class' category: #'Doyen-Classes'!
+EleveView class
 	instanceVariableNames: ''!
 
 
@@ -374,7 +384,7 @@ classeAttribuee
 
 	^ classeAttribuee! !
 
-!Eleve methodsFor: 'accessing' stamp: 'hlsf 7/1/2024 11:45:12'!
+!Eleve methodsFor: 'accessing' stamp: 'hlsf 4/21/2025 23:13:10'!
 classeAttribuee: uneClasse
 	" M'attribuer une classe, si j'étais déjà dans une classe, me supprimer de cette classe "
 	(uneClasse notNil and: [classeAttribuee =  uneClasse]) ifTrue: [
@@ -383,8 +393,8 @@ classeAttribuee: uneClasse
 	classeAttribuee := uneClasse.
 	classeAttribuee isString 
 		ifTrue: [" C'est une chaîne de caractère lors de l'importation, 
-			cela signifie que l'élève se voit préattribu			é une classe, il n'est donc pas mobile "
-			mobile := false 			]! !
+			cela signifie que l'élève se voit préattribué une classe, il n'est donc pas mobile "
+			mobile := false ]! !
 
 !Eleve methodsFor: 'accessing' stamp: 'hlsf 6/28/2024 17:33:16'!
 classesExclues
@@ -439,12 +449,6 @@ mobile
 	"Answer the value of mobile"
 
 	^ mobile! !
-
-!Eleve methodsFor: 'accessing' stamp: 'hlsf 7/26/2024 23:17:01'!
-mobile: anObject
-	"Set the value of mobile"
-
-	mobile := anObject! !
 
 !Eleve methodsFor: 'accessing' stamp: 'hlsf 6/28/2024 17:15:44'!
 nom
@@ -536,11 +540,43 @@ sexe: anObject
 
 	sexe := anObject! !
 
+!Eleve methodsFor: 'printing' stamp: 'hlsf 4/22/2025 00:12:20'!
+descriptionOn: str
+	self printOn: str.
+	str 	nextPutAll: ' ('; nextPut: sexe; nextPut: $); lf.
+	str nextPutAll: 'Provenance : '; nextPutAll: (ancienneClasse ifNil: ['inconnue']); lf.
+	self estDys ifTrue: [str nextPutAll: 'Dyslexique'; lf].
+	str nextPutAll: 'Note : '; print: note; lf.
+	str nextPutAll: 'Section(s) : '.
+	sections printElementsOn: str.
+
+	option ifNotNil: [
+		str lf; nextPutAll: 'Option : '; print: option].
+
+	classesExclues ifNotNil: [
+		str lf; nextPutAll: 'Exclu de '.
+		classesExclues printElementsOn: str].
+	mettreAvec ifNotNil: [
+		str lf; nextPutAll: 'A placer avec '.
+		mettreAvec printElementsOn: str].
+	separerDe ifNotNil: [
+		str lf; nextPutAll: 'A séparer de '.
+		separerDe printElementsOn: str]! !
+
 !Eleve methodsFor: 'printing' stamp: 'hlsf 6/29/2024 17:07:44'!
 printOn: aStream
 	aStream nextPutAll: (nom ifNil: ['XXX']);
 		nextPut: $.;
 		nextPutAll: (prenom ifNil: ['YYY'])! !
+
+!Eleve methodsFor: 'testing' stamp: 'hlsf 4/21/2025 23:06:58'!
+estContraint
+" Existe-t-il une contrainte posée me concernant ? "
+	^ self estDys 
+	or: [ classesExclues notNil
+	or: [ separerDe notNil
+	or: [ mettreAvec notNil
+	or: [ mobile not ] ] ] ]! !
 
 !Eleve methodsFor: 'testing' stamp: 'hlsf 6/30/2024 11:15:49'!
 estDys
@@ -746,6 +782,10 @@ mettreAvec: unEleve
 voleePreferee
 	^ voleePreferee ! !
 
+!Volee methodsFor: 'accessing-classes' stamp: 'hlsf 4/21/2025 22:48:27'!
+capaciteClasses
+	^ classes inject: 0 into: [:effectif :uneClasse | effectif + uneClasse effectif]! !
+
 !Volee methodsFor: 'accessing-classes' stamp: 'hlsf 6/29/2024 16:39:56'!
 classesAvecPlace
 	^ classes select: [:each | each estPleine not]! !
@@ -753,10 +793,6 @@ classesAvecPlace
 !Volee methodsFor: 'accessing-classes' stamp: 'hlsf 4/21/2025 10:24:18'!
 trouverClasse: nom
 	^ self class trouverClasse: nom dans: classes! !
-
-!Volee methodsFor: 'accessing-eleves' stamp: 'hlsf 6/29/2024 17:04:49'!
-effectifClasses
-	^ classes inject: 0 into: [:effectif :uneClasse | effectif + uneClasse effectif]! !
 
 !Volee methodsFor: 'accessing-eleves' stamp: 'hlsf 4/18/2025 23:09:26'!
 elevesDansClasses
@@ -766,8 +802,9 @@ elevesDansClasses
 		into: [:elevesDansClasses :classe | 
 			elevesDansClasses addAll: classe eleves; yourself]! !
 
-!Volee methodsFor: 'accessing-eleves' stamp: 'hlsf 6/30/2024 11:16:00'!
+!Volee methodsFor: 'accessing-eleves' stamp: 'hlsf 4/21/2025 20:51:57'!
 elevesDys
+" Eleves avec troubles dyslexique, pas encore placés dans une classe " 
 	^ self elevesSansClasse select: [:each | each estDys]! !
 
 !Volee methodsFor: 'accessing-eleves' stamp: 'hlsf 6/30/2024 16:00:19'!
@@ -993,8 +1030,8 @@ scoring
 	c2 := self elevesSeuls / 38.0 .
 	^ (0.5 * c1) + (0.5 * c2) ! !
 
-!Volee methodsFor: 'testing' stamp: 'hlsf 7/2/2024 08:20:33'!
-checkElevesEnsemble
+!Volee methodsFor: 'testing' stamp: 'hlsf 4/21/2025 22:51:12'!
+checkElevesEnsembles
 "
 	Vérifie si les élèves devant être ensemble sont bien ensemble
 
@@ -1006,10 +1043,10 @@ checkElevesEnsemble
 			ifNil: [false] 
 			ifNotNil: [:avec |
 		(avec allSatisfy: [:autreEleve | 
-			unEleve classeAttribuee = autreEleve classeAttribuee ]) not		]	 	].
+			unEleve classeAttribuee = autreEleve classeAttribuee ]) not ] ].
 	^ elevesNonAccompagnes isEmpty! !
 
-!Volee methodsFor: 'testing' stamp: 'hlsf 7/2/2024 08:24:09'!
+!Volee methodsFor: 'testing' stamp: 'hlsf 4/21/2025 22:34:53'!
 checkElevesSepares
 "
 	Vérifie si les élèves devant être séparés le sont bien
@@ -1021,43 +1058,38 @@ checkElevesSepares
 		unEleve separerDe 
 			ifNil: [false] 
 			ifNotNil: [:separe |
-		separe anySatisfy: [:autreEleve | 
-			unEleve classeAttribuee = autreEleve classeAttribuee ] 	]	 	].
+				separe anySatisfy: [:autreEleve | 
+					unEleve classeAttribuee = autreEleve classeAttribuee ] ] ].
 	^ elevesNonSepares isEmpty! !
 
-!Volee methodsFor: 'testing' stamp: 'hlsf 7/2/2024 08:29:43'!
+!Volee methodsFor: 'testing' stamp: 'hlsf 4/21/2025 22:43:49'!
 checks
-	^ self checkElevesEnsemble and: [self checkElevesSepares ]! !
+	^ self checkElevesEnsembles and: [self checkElevesSepares ]! !
 
-!Volee methodsFor: 'printing' stamp: 'hlsf 4/21/2025 12:28:29'!
+!Volee methodsFor: 'printing' stamp: 'hlsf 4/21/2025 22:52:24'!
 printOn: stream
-	stream nextPutAll: 'Élèves : '; 		print: self nbEleves ;
-		nextPut: Character lf;
-	nextPutAll: 'Élèves isolés : '; 		print: self elevesSeuls ;
-		nextPut: Character lf;		
-		nextPutAll: 'Classes : '; 		print: self nbClasses;
-		nextPut: Character lf;
-		nextPutAll: 'Élèves sans classe: '; 		print: self elevesSansClasse size;
-		nextPut: Character lf;
-		nextPutAll: 'Note moy (MA+FR+AL): '; print: (self note printStringFractionDigits: 1);
-		nextPut: Character lf;
-		nextPutAll: 'Score : '; print: (self scoring printStringFractionDigits: 2);
-		nextPut: Character lf;
-		nextPutAll: 'Ecart type : '; print: (self ecartType printStringFractionDigits: 2);
-		nextPut: Character lf;		
-		nextPutAll: 'Vérification: '; 		print: self checks;
-		nextPut: Character lf! !
+	stream nextPutAll: 'Élèves : '; 	print: self nbEleves ; lf;
+		nextPutAll: 'Élèves isolés : '; print: self elevesSeuls ; lf;		
+		nextPutAll: 'Classes : '; print: self nbClasses; lf;
+		nextPutAll: 'Capacité classes : '; print: self capaciteClasses ;lf;
+		nextPutAll: 'Élèves sans classe: '; print: self elevesSansClasse size; lf;
+		nextPutAll: 'Note moy (MA+FR+AL): '; nextPutAll: (self note printStringFractionDigits: 1); lf;
+		nextPutAll: 'Score : '; nextPutAll: (self scoring printStringFractionDigits: 2); lf;
+		nextPutAll: 'Ecart type : '; nextPutAll: (self ecartType printStringFractionDigits: 2); lf;		
+		nextPutAll: 'Vérifications: '; newLineTab ;
+		nextPutAll: '- élèves ensemble '; print: self checkElevesEnsembles ; newLineTab ;
+		nextPutAll: '- élèves séparés '; print: self checkElevesSepares ! !
 
-!Volee methodsFor: 'printing' stamp: 'hlsf 4/21/2025 11:09:29'!
+!Volee methodsFor: 'printing' stamp: 'hlsf 4/21/2025 22:50:53'!
 resume
 	^ String streamContents: [: str |
-	str nextPutAll: 'C'; 		print: self nbClasses;
-		nextPutAll: ' E'; 		print: self nbEleves  ;
-		nextPutAll: ' I'; 		print: self elevesSeuls ;
-		nextPutAll: ' X'; 		print: self elevesSansClasse size;
+	str nextPutAll: 'C'; print: self nbClasses;
+		nextPutAll: ' E'; print: self nbEleves  ;
+		nextPutAll: ' I'; print: self elevesSeuls ;
+		nextPutAll: ' X'; print: self elevesSansClasse size;
 		nextPutAll: ' Score='; nextPutAll: (self scoring printStringFractionDigits: 2);
 		nextPutAll: ' σ='; nextPutAll: (self ecartType printStringFractionDigits: 2);
-		nextPutAll: ' Vérif. '; 		print: self checks]! !
+		nextPutAll: ' Vérif. '; print: self checks]! !
 
 !Volee class methodsFor: 'import' stamp: 'hlsf 4/21/2025 10:08:51'!
 fusionnerContraintesEleves: fichierContraintesEleves
@@ -1270,18 +1302,21 @@ importerClasses: classes
 model: uneClasse
 	model := uneClasse ! !
 
-!ClasseView methodsFor: 'initialization' stamp: 'hlsf 4/20/2025 12:51:54'!
+!ClasseView methodsFor: 'initialization' stamp: 'hlsf 4/21/2025 23:05:04'!
 initialize
+	| textView |
 	super initialize.
-	self beColumn.
-	self addMorph: (TextParagraphMorph contents: model printString bold).
-	model eleves do: [:unEleve | | coloring |
-		coloring := unEleve estGarcon ifTrue: [#blue]  ifFalse: [#magenta]. 
-		self addMorph: (
-			TextParagraphMorph 
-				contents: (unEleve printString perform: coloring)
-		)
-	]! !
+	self beColumn;
+		layoutSpec: LayoutSpec keepMorphExtent.
+	textView := TextParagraphMorph contents: (model printString bold color: Color white) ::
+		setHeightOnContent ;
+		borderWidth: 0;
+		color: Color black .
+	self addMorph: textView layoutSpec: LayoutSpec keepMorphExtent.
+	model eleves do: [:unEleve | 
+		self 
+			addMorph: (EleveView on: unEleve)
+			layoutSpec: LayoutSpec keepMorphExtent]! !
 
 !ClasseView class methodsFor: 'as yet unclassified' stamp: 'hlsf 4/20/2025 12:05:13'!
 on: uneClasse
@@ -1289,7 +1324,7 @@ on: uneClasse
 		model: uneClasse;
 		initialize ! !
 
-!VoleeWindow methodsFor: 'GUI building' stamp: 'hlsf 4/21/2025 17:23:12'!
+!VoleeWindow methodsFor: 'GUI building' stamp: 'hlsf 4/22/2025 00:16:02'!
 buildMorphicWindow
  | row |
 	
@@ -1303,7 +1338,7 @@ buildMorphicWindow
 			setBalloonText: 'Enregistrer cette volée sous la forme d''une collection de fichiers csv, un par classe.').
 	self 
 		addMorph: row layoutSpec: LayoutSpec new useMorphHeight;
-		addMorph: (classesView := FlowLayoutMorph new) ! !
+		addMorph: (classesView := FlowLayoutMorph new align: #rowTop) ! !
 
 !VoleeWindow methodsFor: 'GUI building' stamp: 'hlsf 4/21/2025 17:10:32'!
 buildQtyEntry
@@ -1313,13 +1348,17 @@ buildQtyEntry
 		maxNumChars: 4
 		! !
 
-!VoleeWindow methodsFor: 'updating' stamp: 'hlsf 4/21/2025 17:22:20'!
+!VoleeWindow methodsFor: 'updating' stamp: 'hlsf 4/21/2025 20:58:32'!
 update: aspect
 	super update: aspect.
 	aspect == #voleePreferee ifTrue: [ | views |
 		scoreLabel contents: model voleePreferee resume.
-		views := model voleePreferee classes collect: [:classe | ClasseView on: classe].
-		classesView cells: views ]
+		scoreLabel setBalloonText: (String streamContents: [:str |
+			model voleePreferee printOn: str]).
+		views := model voleePreferee classes sorted collect: [:classe | 
+			ClasseView on: classe].
+		classesView cells: views.
+		classesView updateLayout ]
 		! !
 
 !VoleeWindow methodsFor: 'ui' stamp: 'hlsf 4/21/2025 17:14:27'!
@@ -1341,6 +1380,31 @@ open: uneVolee
 	^ self 
 		open: uneVolee 
 		label: 'Conception de volée'! !
+
+!EleveView methodsFor: 'accessing' stamp: 'hlsf 4/21/2025 22:54:47'!
+model: unEleve
+	model := unEleve ! !
+
+!EleveView methodsFor: 'initialization' stamp: 'hlsf 4/21/2025 23:07:52'!
+initialize
+	| genderColor constraintColoring |
+	super initialize.
+	genderColor := model estGarcon ifTrue: [#blue]  ifFalse: [#magenta]. 
+	self	contents: (model printString perform: genderColor).
+	constraintColoring := model estContraint ifTrue: [Color veryVeryLightGray ] ifFalse: [Color white].
+	self setHeightOnContent ;
+		borderWidth: 1;
+		color: constraintColoring . ! !
+
+!EleveView methodsFor: 'as yet unclassified' stamp: 'hlsf 4/21/2025 23:32:11'!
+balloonText
+	^ String streamContents: [:str | model descriptionOn: str]! !
+
+!EleveView class methodsFor: 'as yet unclassified' stamp: 'hlsf 4/21/2025 22:55:10'!
+on: unEleve
+	^ self basicNew
+		model: unEleve ;
+		initialize ! !
 
 !Object methodsFor: '*Doyen' stamp: 'hlsf 6/30/2024 10:31:56'!
 estClasse
