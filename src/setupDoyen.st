@@ -41,11 +41,12 @@ world := UISupervisor ui.
 		morph := Browser open 
 			morphPosition: area extent // 2;
 			morphExtent: extent.
-		morph model setClass: (Smalltalk at: #Volle9) selector: nil.
+		morph model setClass: (Smalltalk at: #Volee9) selector: nil.
 		"Open a Workspace with some default contents"
 		morph := Workspace open.
 		morph model actualContents: 'ChangeSet installNewUpdates.
 SuiviEleve importerClasses: ''911 1023 1134''.
+VoleeWindow open: (Volee9 classes: ''classes9e.csv'' eleves: ''Eleve9e-smog.csv'' contraintesEleves: ''volée9e-nettoyé.csv'').
 '.
 		morph 
 			morphPosition: 0 @ (area height // 2);

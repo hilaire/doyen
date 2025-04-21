@@ -1,29 +1,12 @@
-'From Cuis7.0 [latest update: #6452] on 21 April 2025 at 1:43:56 pm'!
+'From Cuis7.3 [latest update: #7099] on 21 April 2025 at 5:24:56 pm'!
 'Description '!
-!provides: 'Doyen' 1 30!
+!provides: 'Doyen' 1 32!
+!requires: 'Neo-CSV-Core' 1 2 nil!
+!requires: 'UI-Panel' 1 123 nil!
+!requires: 'UI-Entry' 1 56 nil!
 SystemOrganization addCategory: #'Doyen-Classes'!
 SystemOrganization addCategory: #'Doyen-Org'!
 
-
-!classDefinition: #ClasseView category: #'Doyen-Classes'!
-LayoutMorph subclass: #ClasseView
-	instanceVariableNames: 'model'
-	classVariableNames: ''
-	poolDictionaries: ''
-	category: 'Doyen-Classes'!
-!classDefinition: 'ClasseView class' category: #'Doyen-Classes'!
-ClasseView class
-	instanceVariableNames: ''!
-
-!classDefinition: #VoleeWindow category: #'Doyen-Classes'!
-SystemWindow subclass: #VoleeWindow
-	instanceVariableNames: 'scoreLabel qtyEntry'
-	classVariableNames: ''
-	poolDictionaries: ''
-	category: 'Doyen-Classes'!
-!classDefinition: 'VoleeWindow class' category: #'Doyen-Classes'!
-VoleeWindow class
-	instanceVariableNames: ''!
 
 !classDefinition: #Classe category: #'Doyen-Classes'!
 Object subclass: #Classe
@@ -95,6 +78,26 @@ Object subclass: #SuiviEleve
 SuiviEleve class
 	instanceVariableNames: ''!
 
+!classDefinition: #ClasseView category: #'Doyen-Classes'!
+LayoutMorph subclass: #ClasseView
+	instanceVariableNames: 'model'
+	classVariableNames: ''
+	poolDictionaries: ''
+	category: 'Doyen-Classes'!
+!classDefinition: 'ClasseView class' category: #'Doyen-Classes'!
+ClasseView class
+	instanceVariableNames: ''!
+
+!classDefinition: #VoleeWindow category: #'Doyen-Classes'!
+SystemWindow subclass: #VoleeWindow
+	instanceVariableNames: 'scoreLabel qtyEntry classesView'
+	classVariableNames: ''
+	poolDictionaries: ''
+	category: 'Doyen-Classes'!
+!classDefinition: 'VoleeWindow class' category: #'Doyen-Classes'!
+VoleeWindow class
+	instanceVariableNames: ''!
+
 
 !Classe commentStamp: '<historical>' prior: 0!
 Je représente une classe:
@@ -152,83 +155,6 @@ Les données sont importées et ventillées dans
 
 Pour les 9e, les données sont importées de SMOG et du tableau de recueil recommandations issues
 de l'école primaire.!
-
-!ClasseView methodsFor: 'accessing' stamp: 'hlsf 4/20/2025 11:56:11'!
-model: uneClasse
-	model := uneClasse ! !
-
-!ClasseView methodsFor: 'initialization' stamp: 'hlsf 4/20/2025 12:51:54'!
-initialize
-	super initialize.
-	self beColumn.
-	self addMorph: (TextParagraphMorph contents: model printString bold).
-	model eleves do: [:unEleve | | coloring |
-		coloring := unEleve estGarcon ifTrue: [#blue]  ifFalse: [#magenta]. 
-		self addMorph: (
-			TextParagraphMorph 
-				contents: (unEleve printString perform: coloring)
-		)
-	]! !
-
-!ClasseView class methodsFor: 'as yet unclassified' stamp: 'hlsf 4/20/2025 12:05:13'!
-on: uneClasse
-	^ self basicNew 
-		model: uneClasse;
-		initialize ! !
-
-!VoleeWindow methodsFor: 'GUI building' stamp: 'hlsf 4/21/2025 10:59:35'!
-buildMorphicWindow
- | row |
-	
-	scoreLabel := LabelMorph contents: 'Auncun score, calculer au moins une volée'.
-	qtyEntry := TextModelMorph withText: '1' ::
-		morphExtent: 50@0;
-		wrapFlag: false;
-		acceptOnCR: true;
-		hideScrollBarsIndefinitely.
-	row := LayoutMorph newRow.
-	row addMorph: (LabelMorph contents: 'Nombre de volées à calculer : ');
-		addMorph: qtyEntry ;
-		addMorph: (PluggableButtonMorph model: self action: #compute label: 'Calculer');
-		addMorph: scoreLabel;
-		addMorph: ((PluggableButtonMorph model: model action: #exporterClasses label: 'Enregistrer')
-			setBalloonText: 'Enregistrer cette volée sous la forme d''une collection de fichiers csv, un par classe.').
-	self addMorph: row layoutSpec: LayoutSpec new useMorphHeight! !
-
-!VoleeWindow methodsFor: 'updating' stamp: 'hlsf 4/20/2025 20:08:23'!
-update: aspect
-	super update: aspect.
-	aspect == #voleePreferee ifTrue: [
-		scoreLabel contents: model voleePreferee resume 		]
-		! !
-
-!VoleeWindow methodsFor: 'ui' stamp: 'hlsf 4/21/2025 10:46:14'!
-compute
-	| nbFois progress |
-	qtyEntry editor acceptContents.
-	nbFois := [qtyEntry text asNumber] 
-		on: Error 
-		do: [^ self inform: 'Essayer de saisir quelque chose
-qui ressemble à un nombre'].
-	(nbFois isInteger and: [nbFois positive ]) ifFalse: [
-		^ self inform: 'Essayer avec un nombre 
-entier et positif'].
-	
-	progress := ProgressMorph 		label: 'Calcul des volées en cours'.
-	progress openInWorld.
-	[ | step |
-		step := 1 / nbFois.
-		1 to: nbFois do: [:indice |
-			progress 		incrDone: step;
-				subLabel: ('calcul volée ', indice printString, '...').			
-			model calculer].
-		progress delete] forkAt: Processor userBackgroundPriority ! !
-
-!VoleeWindow class methodsFor: 'as yet unclassified' stamp: 'hlsf 4/21/2025 10:18:30'!
-open: uneVolee
-	^ self 
-		open: uneVolee 
-		label: 'Conception de volée'! !
 
 !Classe methodsFor: 'accessing' stamp: 'hlsf 6/30/2024 13:19:55'!
 ajouterEleve: unEleve
@@ -1339,6 +1265,82 @@ importerClasses: classes
 	^ self new
 		importerClasses: classes;
 		yourself! !
+
+!ClasseView methodsFor: 'accessing' stamp: 'hlsf 4/20/2025 11:56:11'!
+model: uneClasse
+	model := uneClasse ! !
+
+!ClasseView methodsFor: 'initialization' stamp: 'hlsf 4/20/2025 12:51:54'!
+initialize
+	super initialize.
+	self beColumn.
+	self addMorph: (TextParagraphMorph contents: model printString bold).
+	model eleves do: [:unEleve | | coloring |
+		coloring := unEleve estGarcon ifTrue: [#blue]  ifFalse: [#magenta]. 
+		self addMorph: (
+			TextParagraphMorph 
+				contents: (unEleve printString perform: coloring)
+		)
+	]! !
+
+!ClasseView class methodsFor: 'as yet unclassified' stamp: 'hlsf 4/20/2025 12:05:13'!
+on: uneClasse
+	^ self basicNew 
+		model: uneClasse;
+		initialize ! !
+
+!VoleeWindow methodsFor: 'GUI building' stamp: 'hlsf 4/21/2025 17:23:12'!
+buildMorphicWindow
+ | row |
+	
+	scoreLabel := LabelMorph contents: 'Auncun score, calculer au moins une volée'.
+	row := LayoutMorph newRow.
+	row addMorph: (LabelMorph contents: 'Nombre de volées à calculer : ');
+		addMorph: self buildQtyEntry ;
+		addMorph: (PluggableButtonMorph model: self action: #compute label: 'Calculer');
+		addMorph: scoreLabel;
+		addMorph: ((PluggableButtonMorph model: model action: #exporterClasses label: 'Enregistrer')
+			setBalloonText: 'Enregistrer cette volée sous la forme d''une collection de fichiers csv, un par classe.').
+	self 
+		addMorph: row layoutSpec: LayoutSpec new useMorphHeight;
+		addMorph: (classesView := FlowLayoutMorph new) ! !
+
+!VoleeWindow methodsFor: 'GUI building' stamp: 'hlsf 4/21/2025 17:10:32'!
+buildQtyEntry
+	^ qtyEntry := SimpleNumberEntryMorph 
+		integerRangeFrom: 1 
+		to: 9999 
+		maxNumChars: 4
+		! !
+
+!VoleeWindow methodsFor: 'updating' stamp: 'hlsf 4/21/2025 17:22:20'!
+update: aspect
+	super update: aspect.
+	aspect == #voleePreferee ifTrue: [ | views |
+		scoreLabel contents: model voleePreferee resume.
+		views := model voleePreferee classes collect: [:classe | ClasseView on: classe].
+		classesView cells: views ]
+		! !
+
+!VoleeWindow methodsFor: 'ui' stamp: 'hlsf 4/21/2025 17:14:27'!
+compute
+	| nbFois progress |
+	nbFois := qtyEntry contents asNumber.
+	progress := ProgressMorph 	label: 'Calcul des volées en cours'.
+	progress openInWorld.
+	[ | step |
+		step := 1 / nbFois.
+		1 to: nbFois do: [:indice |
+			progress incrDone: step;
+				subLabel: ('calcul volée ', indice printString, '...').			
+			model calculer].
+		progress delete] forkAt: Processor userBackgroundPriority ! !
+
+!VoleeWindow class methodsFor: 'as yet unclassified' stamp: 'hlsf 4/21/2025 10:18:30'!
+open: uneVolee
+	^ self 
+		open: uneVolee 
+		label: 'Conception de volée'! !
 
 !Object methodsFor: '*Doyen' stamp: 'hlsf 6/30/2024 10:31:56'!
 estClasse
