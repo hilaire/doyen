@@ -22,7 +22,8 @@ world := UISupervisor ui.
 		(world submorphs reject: [:aMorph | aMorph is: #TaskbarMorph]) 
 			do: [:each | each delete].
 		"Adjust font size"
-		Preferences at: #defaultFontSize put: 10.	
+		Preferences at: #defaultFontSize put: 10.
+		Preferences at: #fullScreenLeavesDeskMargins put: false.		
 		"Adjust taskbar size"
 		morph := world taskbar.
 		morph scale: 1/2.

@@ -1,6 +1,6 @@
-'From Cuis7.3 [latest update: #7099] on 22 April 2025 at 12:19:23 am'!
+'From Cuis7.3 [latest update: #7099] on 22 April 2025 at 12:20:08 pm'!
 'Description '!
-!provides: 'Doyen' 1 34!
+!provides: 'Doyen' 1 35!
 !requires: 'Neo-CSV-Core' 1 2 nil!
 !requires: 'UI-Panel' 1 123 nil!
 !requires: 'UI-Entry' 1 56 nil!
@@ -892,21 +892,20 @@ calculer
 	self verifierScore.
 ! !
 
-!Volee methodsFor: 'initialization' stamp: 'hlsf 4/21/2025 12:02:11'!
+!Volee methodsFor: 'initialization' stamp: 'hlsf 4/22/2025 11:55:01'!
 collecterElevesEnsemble
-" Collection d'élève à mettre ensemble "
-	elevesEnsemble := (	eleves 
+" Collection d'élèves à mettre ensemble "
+	elevesEnsemble := (eleves 
 		select: [:each | each mettreAvec notNil] 
-		thenCollect:[:unEleve | 		unEleve mettreAvec asSet add: unEleve; yourself	 ]	) asSet.
+		thenCollect:[:unEleve | unEleve mettreAvec asSet add: unEleve; yourself]) asSet.
 	elevesEnsemble do: [:unGroupe | 
 		elevesEnsemble do: [:anotherGroup |
 			unGroupe == anotherGroup ifFalse: [
-				(unGroupe includesAnyOf: anotherGroup) ifTrue: [unGroupe addAll: anotherGroup] ]			 ] 		].
-	elevesEnsemble := elevesEnsemble collect: [:each | each asSet]
-		
-	! !
+				(unGroupe includesAnyOf: anotherGroup) ifTrue: [
+					unGroupe addAll: anotherGroup] ] ] ].
+	elevesEnsemble := elevesEnsemble collect: [:each | each asSet]! !
 
-!Volee methodsFor: 'initialization' stamp: 'hlsf 4/19/2025 12:50:08'!
+!Volee methodsFor: 'initialization' stamp: 'hlsf 4/22/2025 11:50:32'!
 initElevesEnsemble
 " 
 	Certains élèves sont placés ensemble 
@@ -916,15 +915,15 @@ initElevesEnsemble
 		select: [:each | each mettreAvec notNil] 
 		thenDo: [:unEleve | | autresEleves |
 			autresEleves := unEleve mettreAvec virguleSeparer collect: [:unNom | 
-				(self trouverEleve: unNom) 				ifNil: [
+				(self trouverEleve: unNom) ifNil: [
 					Transcript show: '**'; show: unNom; show: ' non trouvé';cr.
 					nil] ].
 			autresEleves removeAllSuchThat: [:each | each isNil].
-			autresEleves 			 ifEmpty: [autresEleves := nil].
+			autresEleves	 ifEmpty: [autresEleves := nil].
 			unEleve mettreAvec: autresEleves.
-			Transcript show: unEleve ; show: ' est à mettre avec '; show: autresEleves ;cr 		]! !
+			Transcript show: unEleve ; show: ' est à mettre avec '; show: autresEleves ;cr ]! !
 
-!Volee methodsFor: 'initialization' stamp: 'hlsf 4/19/2025 12:50:42'!
+!Volee methodsFor: 'initialization' stamp: 'hlsf 4/22/2025 12:03:57'!
 initElevesSepares
 "
 	Certains élèves ne doivent pas être ensemble
@@ -934,15 +933,17 @@ initElevesSepares
 		select: [:each | each separerDe notNil] 
 		thenDo: [:unEleve | | autresEleves |
 			autresEleves := unEleve separerDe virguleSeparer collect: [:unNom | 
-				(self trouverEleve: unNom) 				ifNil: [
-					Transcript  show: '**'; show: unNom; show: ' non trouvé';cr.
+				(self trouverEleve: unNom) ifNil: [
+					Transcript  show: '**'; 
+						show: unNom; show: ' non trouvé. A s''éparer de ';
+						print: unEleve; cr.
 					nil] ].
-			autresEleves removeAllSuchThat: [:each | 				each isNil].
-			autresEleves 			 ifEmpty: [autresEleves := nil].
+			autresEleves removeAllSuchThat: [:each | each isNil].
+			autresEleves	 ifEmpty: [autresEleves := nil].
 			unEleve separerDe: autresEleves.
-			Transcript show: unEleve ; show: ' est à séparer de '; show: autresEleves ;cr 		]! !
+			Transcript show: unEleve ; show: ' est à séparer de '; show: autresEleves ;cr ]! !
 
-!Volee methodsFor: 'initialization' stamp: 'hlsf 6/30/2024 13:10:03'!
+!Volee methodsFor: 'initialization' stamp: 'hlsf 4/22/2025 11:51:34'!
 initPreattribuerClasses
 "
 	Des élèves se voient préattribués des classes
@@ -954,9 +955,11 @@ initPreattribuerClasses
 		thenDo: [:unEleve | | classe |
 			classe := self trouverClasse: unEleve classeAttribuee.
 			classe ajouterEleve: unEleve.
-			Transcript show: unEleve; show: 					' à placer en classe '; show: 				classe; cr]! !
+			Transcript show: unEleve; 
+				show: ' à placer en classe '; 
+				show: classe; cr]! !
 
-!Volee methodsFor: 'initialization' stamp: 'hlsf 4/21/2025 12:00:19'!
+!Volee methodsFor: 'initialization' stamp: 'hlsf 4/22/2025 11:51:54'!
 initPreexclureClasses
 "
 	Des élèves se voient préexcluent de certaines classes
@@ -966,9 +969,11 @@ initPreexclureClasses
 	eleves 
 		select: [:each | each classesExclues notNil] 
 		thenDo: [:unEleve | | sesClassesExclues |
-			sesClassesExclues := unEleve classesExclues virguleSeparer 				collect: [:unNom | 				self trouverClasse: unNom ].
+			sesClassesExclues := unEleve classesExclues virguleSeparer 				collect: [:unNom | self trouverClasse: unNom ].
 			unEleve classesExclues: sesClassesExclues.
-			Transcript show: unEleve; show: ' est à exclure des classes '; show: sesClassesExclues; cr 				]! !
+			Transcript show: unEleve; 
+				show: ' est à exclure des classes '; 
+				show: sesClassesExclues; cr ]! !
 
 !Volee methodsFor: 'initialization' stamp: 'hlsf 4/21/2025 13:40:24'!
 preparerDonnees
@@ -980,15 +985,15 @@ preparerDonnees
 		initElevesSepares;
 		collecterElevesEnsemble! !
 
-!Volee methodsFor: 'initialization' stamp: 'hlsf 4/20/2025 13:57:38'!
+!Volee methodsFor: 'initialization' stamp: 'hlsf 4/22/2025 11:52:15'!
 verifierScore
 " Nous cherchons la volée avec le meilleur score "
 	^ (voleePreferee isNil 
-	or: [voleePreferee notNil 		and: [ voleePreferee scoring > self scoring 			]])
+	or: [voleePreferee notNil and: [ voleePreferee scoring > self scoring ]])
 		ifTrue: [
 			'\o/ Volée avec un meilleur arrangement !!' print.
 			voleePreferee := self veryDeepCopy.
-			self changed: #voleePreferee		]! !
+			self changed: #voleePreferee ]! !
 
 !Volee methodsFor: 'metric' stamp: 'hlsf 4/19/2025 13:12:55'!
 ecartType
