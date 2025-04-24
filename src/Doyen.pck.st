@@ -1,6 +1,6 @@
-'From Cuis7.3 [latest update: #7099] on 23 April 2025 at 9:35:17 pm'!
+'From Cuis7.3 [latest update: #7099] on 25 April 2025 at 12:39:20 am'!
 'Description '!
-!provides: 'Doyen' 1 38!
+!provides: 'Doyen' 1 39!
 !requires: 'Neo-CSV-Core' 1 2 nil!
 !requires: 'UI-Panel' 1 123 nil!
 !requires: 'UI-Entry' 1 56 nil!
@@ -100,7 +100,7 @@ ClasseView class
 
 !classDefinition: #VoleeWindow category: #'Doyen-Classes'!
 SystemWindow subclass: #VoleeWindow
-	instanceVariableNames: 'scoreLabel qtyEntry classesView'
+	instanceVariableNames: 'scoreLabel qtyEntry classesView filesToolbar'
 	classVariableNames: ''
 	poolDictionaries: ''
 	category: 'Doyen-Classes'!
@@ -1381,29 +1381,52 @@ on: uneClasse
 		model: uneClasse;
 		initialize ! !
 
-!VoleeWindow methodsFor: 'GUI building' stamp: 'hlsf 4/22/2025 00:16:02'!
-buildMorphicWindow
- | row |
-	
-	scoreLabel := LabelMorph contents: 'Auncun score, calculer au moins une volée'.
+!VoleeWindow methodsFor: 'GUI building' stamp: 'hlsf 4/24/2025 23:50:12'!
+buildComputeToolbar
+	| row |
+	 qtyEntry := SimpleNumberEntryMorph 
+		integerRangeFrom: 1 
+		to: 9999 
+		maxNumChars: 4.
+		
 	row := LayoutMorph newRow.
 	row addMorph: (LabelMorph contents: 'Nombre de volées à calculer : ');
-		addMorph: self buildQtyEntry ;
+		addMorph: qtyEntry ;
 		addMorph: (PluggableButtonMorph model: self action: #compute label: 'Calculer');
 		addMorph: scoreLabel;
 		addMorph: ((PluggableButtonMorph model: model action: #exporterClasses label: 'Enregistrer')
 			setBalloonText: 'Enregistrer cette volée sous la forme d''une collection de fichiers csv, un par classe.').
-	self 
-		addMorph: row layoutSpec: LayoutSpec new useMorphHeight;
-		addMorph: (classesView := FlowLayoutMorph new align: #rowTop) ! !
+	^ row! !
 
-!VoleeWindow methodsFor: 'GUI building' stamp: 'hlsf 4/21/2025 17:10:32'!
-buildQtyEntry
-	^ qtyEntry := SimpleNumberEntryMorph 
-		integerRangeFrom: 1 
-		to: 9999 
-		maxNumChars: 4
-		! !
+!VoleeWindow methodsFor: 'GUI building' stamp: 'hlsf 4/25/2025 00:24:20'!
+buildFilesToolbar
+	filesToolbar := LayoutMorph newRow.
+	filesToolbar addMorph: (LabelMorph contents: 'Choisir une volée ci-dessus.').
+	^ filesToolbar! !
+
+!VoleeWindow methodsFor: 'GUI building' stamp: 'hlsf 4/25/2025 00:37:40'!
+buildMorphicWindow
+	scoreLabel := LabelMorph contents: 'Auncun score, calculer au moins une volée'.
+	self 
+		addMorph: self buildComputeToolbar layoutSpec: LayoutSpec new useMorphHeight;
+		addMorph: self buildVoleeToolbar layoutSpec: LayoutSpec  keepMorphExtent ;
+		addMorph: self buildFilesToolbar layoutSpec: LayoutSpec keepMorphExtent ;
+		addMorph: (classesView := FlowLayoutMorph new align: #rowTop)! !
+
+!VoleeWindow methodsFor: 'GUI building' stamp: 'hlsf 4/25/2025 00:35:51'!
+buildVoleeToolbar
+	| row group groupButtons |
+		
+	group := RadioGroup fromList: #('9ème' '10ème' '11ème').
+	groupButtons := group buttons.
+	groupButtons first when: #radioSelection send: #select9 to: self.
+	groupButtons second when: #radioSelection send: #select10 to: self.
+	groupButtons third when: #radioSelection send: #select11 to: self.
+
+	row := LayoutMorph newRow.
+	row addMorph: (LabelMorph contents: 'Volée : ');
+		addMorph: group beRow.	
+	^ row! !
 
 !VoleeWindow methodsFor: 'updating' stamp: 'hlsf 4/21/2025 20:58:32'!
 update: aspect
