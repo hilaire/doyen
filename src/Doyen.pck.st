@@ -1,6 +1,6 @@
-'From Cuis7.3 [latest update: #7099] on 25 April 2025 at 11:59:22 am'!
+'From Cuis7.3 [latest update: #7099] on 25 April 2025 at 1:44:06 pm'!
 'Description '!
-!provides: 'Doyen' 1 40!
+!provides: 'Doyen' 1 41!
 !requires: 'Goodies' 1 11 nil!
 !requires: 'Neo-CSV-Core' 1 2 nil!
 !requires: 'UI-Panel' 1 123 nil!
@@ -91,7 +91,7 @@ ClasseView class
 
 !classDefinition: #VoleeWindow category: #'Doyen-Classes'!
 SystemWindow subclass: #VoleeWindow
-	instanceVariableNames: 'scoreLabel qtyEntry classesView filesToolbar'
+	instanceVariableNames: 'scoreLabel qtyEntry classesView filesToolbar elevesBtn contraintesBtn classesBtn groupesBtn'
 	classVariableNames: ''
 	poolDictionaries: ''
 	category: 'Doyen-Classes'!
@@ -709,11 +709,11 @@ importer: fichierCSV
 		upToEnd.
 	^ (eleves select: [:record | record estValide ]) asOrderedCollection! !
 
-!Eleve class methodsFor: 'instance creation' stamp: 'hlsf 4/21/2025 10:12:56'!
+!Eleve class methodsFor: 'instance creation' stamp: 'hlsf 4/25/2025 13:09:55'!
 importerContraintes: fichierCSV
 " Importation des données issues du relevé d'information en école primaire et autres "
 	| eleves |
-	eleves := (NeoCSVReader on: (DirectoryEntry projectBaseDirectory / 'import' // fichierCSV) readStream)
+	eleves := (NeoCSVReader on: fichierCSV readStream)
 		separator: $; ;
 		skipHeader ;
 		recordClass: self ;
@@ -890,8 +890,9 @@ calculer
 	self verifierScore.
 ! !
 
-!Volee9 methodsFor: 'affecter' stamp: 'hlsf 4/23/2025 12:10:36'!
+!Volee9 methodsFor: 'affecter' stamp: 'hlsf 4/25/2025 13:07:52'!
 preparerDonnees
+	eleves ifNil: [self importerEtInitialiser].
 	eleves do: [:eleve | 
 		eleve estMobile ifTrue: [
 			eleve classeAttribuee ifNotNil: [:classe | classe enleverEleve: eleve]] ].
@@ -1150,18 +1151,19 @@ resume
 		nextPutAll: ' σ='; nextPutAll: (self ecartType printStringFractionDigits: 2);
 		nextPutAll: ' Vérif. '; print: self checks]! !
 
-!Volee9 methodsFor: 'import/export' stamp: 'hlsf 4/25/2025 11:51:41'!
+!Volee9 methodsFor: 'import/export' stamp: 'hlsf 4/25/2025 13:21:30'!
 exportPath
-	^ DirectoryEntry projectBaseDirectory / 'path'! !
+	^ DirectoryEntry projectBaseDirectory / 'export' / 'Volée9e'! !
 
-!Volee9 methodsFor: 'import/export' stamp: 'hlsf 4/25/2025 11:56:55'!
+!Volee9 methodsFor: 'import/export' stamp: 'hlsf 4/25/2025 13:39:59'!
 exporterClasses
-	voleePreferee ifNil: [^ self inform: 'Aucune volée n''a été calculée,
-par conséquent rien ne peut être sauvegardé.
-Essayer de calculer au moins une volée !!'].
-
+	| path |
+	path := self exportPath / (String streamContents: [:str |
+		DateAndTime now filenamishPrintOn: str]).
+	path assureExistence.
+		
 	voleePreferee classes do: [:uneClasse | | stream writer fichier |
-		fichier := self exportPath // (uneClasse nom, '.csv').
+		fichier := path // (uneClasse nom, '.csv').
 		fichier delete.
 		stream := fichier writeStream.
 		writer := NeoCSVWriter on: stream.
@@ -1170,7 +1172,8 @@ Essayer de calculer au moins une volée !!'].
 			nextPut: #(NOM PRENOM SEXE).
 		uneClasse eleves do: [:unEleve | writer nextPut: {unEleve nom . unEleve prenom . unEleve sexe} ].
 		stream close].
-	self inform: 'Volée sauvegardée dans le dossier "export".'! !
+	self inform: 'Volée sauvegardée dans le dossier 
+', path pathName ! !
 
 !Volee9 methodsFor: 'import/export' stamp: 'hlsf 4/25/2025 10:34:19'!
 filtrer
@@ -1234,6 +1237,10 @@ csvEleves: fichierEleves
 csvGroupes: fichierGroupes
 	csvGroupes := fichierGroupes! !
 
+!Volee10 methodsFor: 'import/export' stamp: 'hlsf 4/25/2025 13:22:31'!
+exportPath
+	^ DirectoryEntry projectBaseDirectory / 'export' / 'Volée10e'! !
+
 !Volee10 methodsFor: 'import/export' stamp: 'hlsf 4/25/2025 11:56:06'!
 importerGroupes
 	| groupes |
@@ -1268,6 +1275,10 @@ est9eme
 estCalculable
 	^ super estCalculable
 	and: [csvGroupes notNil]! !
+
+!Volee11 methodsFor: 'import/export' stamp: 'hlsf 4/25/2025 13:22:42'!
+exportPath
+	^ DirectoryEntry projectBaseDirectory / 'export' / 'Volée11e'! !
 
 !SuiviEleve methodsFor: 'initialization' stamp: 'hlsf 7/26/2024 17:01:02'!
 initialize
@@ -1404,16 +1415,18 @@ on: uneClasse
 		model: uneClasse;
 		initialize ! !
 
-!VoleeWindow methodsFor: 'GUI building' stamp: 'hlsf 4/25/2025 11:40:57'!
+!VoleeWindow methodsFor: 'GUI building' stamp: 'hlsf 4/25/2025 12:48:34'!
 ajoutBouton: nom action: symbol
+	| button |
 	filesToolbar 
 		addMorph: (LabelMorph contents:  nom capitalized , ' : ');
-		addMorph: (PluggableButtonMorph
+		addMorph: (button := PluggableButtonMorph
 			model: self
 			action: symbol
-			label: 'Choisir fichier')! !
+			label: 'Choisir fichier').
+	^ button! !
 
-!VoleeWindow methodsFor: 'GUI building' stamp: 'hlsf 4/25/2025 10:20:16'!
+!VoleeWindow methodsFor: 'GUI building' stamp: 'hlsf 4/25/2025 13:35:18'!
 buildComputeToolbar
 	| row |
 	 qtyEntry := SimpleNumberEntryMorph 
@@ -1431,13 +1444,14 @@ buildComputeToolbar
 			enableSelector: #canCompute );
 		addMorph: scoreLabel;
 		addMorph: (PluggableButtonMorph 
-			model: model 
+			model: self 
 			action: #exporterClasses 
 			label: 'Enregistrer' ::
+			enableSelector: #isComputed;
 			setBalloonText: 'Enregistrer cette volée sous la forme d''une collection de fichiers csv, un par classe.').
 	^ row! !
 
-!VoleeWindow methodsFor: 'GUI building' stamp: 'hlsf 4/25/2025 11:39:56'!
+!VoleeWindow methodsFor: 'GUI building' stamp: 'hlsf 4/25/2025 12:55:16'!
 buildFilesToolbar
 	filesToolbar 
 		ifNil: [filesToolbar := LayoutMorph newRow]
@@ -1447,19 +1461,18 @@ buildFilesToolbar
 			addMorph: (LabelMorph contents: 'Choisir une volée ci-dessus.');
 			layoutSpec: (LayoutSpec keepMorphExtent offAxisEdgeWeight: 0) ]
 		ifNotNil: [
-			self 
-				ajoutBouton: 'élèves' action: #choxFichierEleves;
-				ajoutBouton: 'contraintes élèves' action: #choixFichierContraintes; 
-				ajoutBouton: 'classes' action: #choixFichierClasses.
+			elevesBtn := self	ajoutBouton: 'élèves' action: #choixFichierEleves.
+			contraintesBtn := self	ajoutBouton: 'contraintes élèves' action: #choixFichierContraintes.
+			classesBtn := self ajoutBouton: 'classes' action: #choixFichierClasses.
 			model est9eme ifFalse: [
-				self 	
+				groupesBtn := self 	
 					ajoutBouton: 'groupes d''options' 
 					action: #choixFichierGroupes ]].
 	^ filesToolbar! !
 
-!VoleeWindow methodsFor: 'GUI building' stamp: 'hlsf 4/25/2025 10:06:18'!
+!VoleeWindow methodsFor: 'GUI building' stamp: 'hlsf 4/25/2025 13:18:17'!
 buildMorphicWindow
-	scoreLabel := LabelMorph contents: 'Auncun score, calculer au moins une volée'.
+	scoreLabel := LabelMorph contents: self scoreVideLabel.
 	self 
 		addMorph: self buildComputeToolbar layoutSpec: LayoutSpec new useMorphHeight;
 		addMorph: self buildVoleeToolbar ;
@@ -1482,7 +1495,12 @@ buildVoleeToolbar
 		layoutSpec: (LayoutSpec keepMorphExtent offAxisEdgeWeight: #columnLeft).
 	^ row! !
 
-!VoleeWindow methodsFor: 'updating' stamp: 'hlsf 4/21/2025 20:58:32'!
+!VoleeWindow methodsFor: 'GUI building' stamp: 'hlsf 4/25/2025 13:18:17'!
+scoreVideLabel
+
+	^ 'Auncun score, calculer au moins une volée'! !
+
+!VoleeWindow methodsFor: 'updating' stamp: 'hlsf 4/25/2025 13:38:19'!
 update: aspect
 	super update: aspect.
 	aspect == #voleePreferee ifTrue: [ | views |
@@ -1492,25 +1510,57 @@ update: aspect
 		views := model voleePreferee classes sorted collect: [:classe | 
 			ClasseView on: classe].
 		classesView cells: views.
-		classesView updateLayout ]
+		classesView updateLayout.
+		self changed: #isComputed]
 		! !
 
-!VoleeWindow methodsFor: 'ui' stamp: 'hlsf 4/25/2025 11:44:00'!
-choixFichierClasses! !
+!VoleeWindow methodsFor: 'ui' stamp: 'hlsf 4/25/2025 13:04:17'!
+choixFichierClasses
+	| result |
+	result :=(StandardFileMenu new
+		oldFileFrom: model importPath withPattern: '*csv' excludePattern: '.*';
+		startUpWithCaption: 'Fichier classes au format CSV').
+	result ifNil: [^ self].
+	classesBtn label: result name.
+	classesBtn owner layoutNeeded: true.
+	model csvClasses: result name.
+	self changed: #canCompute! !
 
-!VoleeWindow methodsFor: 'ui' stamp: 'hlsf 4/25/2025 11:44:04'!
-choixFichierContraintes! !
+!VoleeWindow methodsFor: 'ui' stamp: 'hlsf 4/25/2025 13:04:54'!
+choixFichierContraintes
+	| result |
+	result :=(StandardFileMenu new
+		oldFileFrom: model importPath withPattern: '*csv' excludePattern: '.*';
+		startUpWithCaption: 'Fichier contraintes élèves au format CSV').
+	result ifNil: [^ self].
+	contraintesBtn label: result name.
+	contraintesBtn owner layoutNeeded: true.
+	model csvContraintes: result name.
+	self changed: #canCompute! !
 
-!VoleeWindow methodsFor: 'ui' stamp: 'hlsf 4/25/2025 11:59:05'!
+!VoleeWindow methodsFor: 'ui' stamp: 'hlsf 4/25/2025 13:02:59'!
 choixFichierEleves
 	| result |
 	result :=(StandardFileMenu new
 		oldFileFrom: model importPath withPattern: '*csv' excludePattern: '.*';
 		startUpWithCaption: 'Fichier élèves au format CSV').
-	result inspect.! !
+	result ifNil: [^ self].
+	elevesBtn label: result name.
+	elevesBtn owner layoutNeeded: true.
+	model csvEleves: result name.
+	self changed: #canCompute! !
 
-!VoleeWindow methodsFor: 'ui' stamp: 'hlsf 4/25/2025 11:44:09'!
-choixFichierGroupes! !
+!VoleeWindow methodsFor: 'ui' stamp: 'hlsf 4/25/2025 13:05:31'!
+choixFichierGroupes
+	| result |
+	result :=(StandardFileMenu new
+		oldFileFrom: model importPath withPattern: '*csv' excludePattern: '.*';
+		startUpWithCaption: 'Fichier groupes d''options au format CSV').
+	result ifNil: [^ self].
+	groupesBtn label: result name.
+	groupesBtn owner layoutNeeded: true.
+	model csvGroupes: result name.
+	self changed: #canCompute! !
 
 !VoleeWindow methodsFor: 'ui' stamp: 'hlsf 4/21/2025 17:14:27'!
 compute
@@ -1526,25 +1576,46 @@ compute
 			model calculer].
 		progress delete] forkAt: Processor userBackgroundPriority ! !
 
-!VoleeWindow methodsFor: 'ui' stamp: 'hlsf 4/25/2025 11:39:20'!
+!VoleeWindow methodsFor: 'ui' stamp: 'hlsf 4/25/2025 13:34:12'!
+exporterClasses
+	model ifNotNil: [model exporterClasses]! !
+
+!VoleeWindow methodsFor: 'ui' stamp: 'hlsf 4/25/2025 13:37:33'!
 select10
-	model := Volee10 new.
-	self buildFilesToolbar ! !
+	self model: Volee10 new.
+	self buildFilesToolbar.
+	classesView cells: #().
+	scoreLabel contents: self scoreVideLabel.
+	self changed: #canCompute.
+	self changed: #isComputed.! !
 
-!VoleeWindow methodsFor: 'ui' stamp: 'hlsf 4/25/2025 11:39:25'!
+!VoleeWindow methodsFor: 'ui' stamp: 'hlsf 4/25/2025 13:37:39'!
 select11
-	model := Volee11 new.
-	self buildFilesToolbar ! !
+	self model: Volee11 new.
+	self buildFilesToolbar.
+	classesView cells: #().
+	scoreLabel contents: self scoreVideLabel.
+	self changed: #canCompute.
+	self changed: #isComputed.! !
 
-!VoleeWindow methodsFor: 'ui' stamp: 'hlsf 4/25/2025 11:39:29'!
+!VoleeWindow methodsFor: 'ui' stamp: 'hlsf 4/25/2025 13:37:44'!
 select9
-	model := Volee9 new.
-	self buildFilesToolbar ! !
+	self model: Volee9 new.
+	self buildFilesToolbar.
+	classesView cells: #().
+	scoreLabel contents: self scoreVideLabel.
+	self changed: #canCompute.
+	self changed: #isComputed.! !
 
 !VoleeWindow methodsFor: 'testing' stamp: 'hlsf 4/25/2025 11:04:49'!
 canCompute
 	^ model notNil
 	and: [model estCalculable ]! !
+
+!VoleeWindow methodsFor: 'testing' stamp: 'hlsf 4/25/2025 13:39:24'!
+isComputed
+	^ model notNil 
+	and: [model voleePreferee notNil]! !
 
 !VoleeWindow class methodsFor: 'instance creation' stamp: 'hlsf 4/25/2025 10:12:37'!
 open
