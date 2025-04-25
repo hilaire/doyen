@@ -1,6 +1,6 @@
-'From Cuis7.3 [latest update: #7099] on 25 April 2025 at 1:44:06 pm'!
+'From Cuis7.3 [latest update: #7099] on 25 April 2025 at 4:31:23 pm'!
 'Description '!
-!provides: 'Doyen' 1 41!
+!provides: 'Doyen' 1 42!
 !requires: 'Goodies' 1 11 nil!
 !requires: 'Neo-CSV-Core' 1 2 nil!
 !requires: 'UI-Panel' 1 123 nil!
@@ -1151,9 +1151,9 @@ resume
 		nextPutAll: ' σ='; nextPutAll: (self ecartType printStringFractionDigits: 2);
 		nextPutAll: ' Vérif. '; print: self checks]! !
 
-!Volee9 methodsFor: 'import/export' stamp: 'hlsf 4/25/2025 13:21:30'!
+!Volee9 methodsFor: 'import/export' stamp: 'hlsf 4/25/2025 16:30:30'!
 exportPath
-	^ DirectoryEntry projectBaseDirectory / 'export' / 'Volée9e'! !
+	^ DirectoryEntry projectBaseDirectory / 'export' / 'Volee9e'! !
 
 !Volee9 methodsFor: 'import/export' stamp: 'hlsf 4/25/2025 13:39:59'!
 exporterClasses
@@ -1237,9 +1237,9 @@ csvEleves: fichierEleves
 csvGroupes: fichierGroupes
 	csvGroupes := fichierGroupes! !
 
-!Volee10 methodsFor: 'import/export' stamp: 'hlsf 4/25/2025 13:22:31'!
+!Volee10 methodsFor: 'import/export' stamp: 'hlsf 4/25/2025 16:30:54'!
 exportPath
-	^ DirectoryEntry projectBaseDirectory / 'export' / 'Volée10e'! !
+	^ DirectoryEntry projectBaseDirectory / 'export' / 'Volee10e'! !
 
 !Volee10 methodsFor: 'import/export' stamp: 'hlsf 4/25/2025 11:56:06'!
 importerGroupes
@@ -1276,9 +1276,9 @@ estCalculable
 	^ super estCalculable
 	and: [csvGroupes notNil]! !
 
-!Volee11 methodsFor: 'import/export' stamp: 'hlsf 4/25/2025 13:22:42'!
+!Volee11 methodsFor: 'import/export' stamp: 'hlsf 4/25/2025 16:31:02'!
 exportPath
-	^ DirectoryEntry projectBaseDirectory / 'export' / 'Volée11e'! !
+	^ DirectoryEntry projectBaseDirectory / 'export' / 'Volee11e'! !
 
 !SuiviEleve methodsFor: 'initialization' stamp: 'hlsf 7/26/2024 17:01:02'!
 initialize
