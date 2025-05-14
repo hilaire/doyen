@@ -1,6 +1,6 @@
-'From Cuis7.3 [latest update: #7099] on 25 April 2025 at 4:31:23 pm'!
+'From Cuis7.3 [latest update: #7099] on 14 May 2025 at 9:59:21 am'!
 'Description '!
-!provides: 'Doyen' 1 42!
+!provides: 'Doyen' 1 43!
 !requires: 'Goodies' 1 11 nil!
 !requires: 'Neo-CSV-Core' 1 2 nil!
 !requires: 'UI-Panel' 1 123 nil!
@@ -21,7 +21,7 @@ Classe class
 
 !classDefinition: #Eleve category: #'Doyen-Classes'!
 Object subclass: #Eleve
-	instanceVariableNames: 'nom prenom ancienneClasse classeAttribuee classesExclues sexe note sections option dys separerDe mettreAvec mobile email'
+	instanceVariableNames: 'nom prenom ancienneClasse classeAttribuee classesExclues sexe note sections option trouble separerDe mettreAvec mobile email'
 	classVariableNames: ''
 	poolDictionaries: ''
 	category: 'Doyen-Classes'!
@@ -126,7 +126,7 @@ Je représente un élève avec les attributs nécessaires pour m'attribuer une c
 - classeExcluée : classes dans lesquelles l'élève ne peut pas être affecté. Importées comme des chaînes de caractères puis remplacés par les objets classes ad-hoc
 - sexe : caractère $M ou $F
 - score : moyenne des notes français, mathématiques. Le français compte double pour la détermination du score
-- dys: booléen
+- trouble: booléen indiquant un PAI ou un aménagement
 - séparerDe, mettreAvec : collection d'élèves, importés comme chaînes de caractères (prénom nom) puis remplacé par les objets élève ad-hoc.
 - sections: les sections de l'élève, peut être #MI et #R2, ou #MI #CT pour les options SAE
 - option: #SAE, #L #S #LV #SA #AA. Dans les 9e, seul les SAE on cette option
@@ -287,11 +287,6 @@ initialize
 	eleves := SortedCollection new.
 	groupes := OrderedCollection new! !
 
-!Classe methodsFor: 'metric' stamp: 'hlsf 6/30/2024 11:18:50'!
-dys
-	" Indique le nombre d'élèves dys "
-	^ eleves count: [:each | each estDys]! !
-
 !Classe methodsFor: 'metric' stamp: 'hlsf 6/29/2024 09:15:47'!
 effectif
 	"Answer the value of effectif"
@@ -323,7 +318,12 @@ garcons
 note
 	^ [(eleves sum: [:unEleve | unEleve note]) / eleves size] on: Error do: 0! !
 
-!Classe methodsFor: 'printing' stamp: 'hlsf 4/19/2025 13:12:55'!
+!Classe methodsFor: 'metric' stamp: 'hlsf 5/14/2025 08:24:39'!
+trouble
+	" Indique le nombre d'élèves dys "
+	^ eleves count: [:each | each avecTrouble]! !
+
+!Classe methodsFor: 'printing' stamp: 'hlsf 5/14/2025 08:21:01'!
 printOn: stream
 	stream nextPutAll: nom.
 	sections ifNotNil: [sections 
@@ -335,7 +335,7 @@ printOn: stream
 		nextPut: $/;
 		print: effectif; 
 		nextPutAll: ' t' ;
-		print: self dys;
+		print: self trouble;
 		nextPutAll: ' g';
 		print: self garcons;
 		nextPutAll: ' f';
@@ -444,18 +444,6 @@ classesExclues: anObject
 	"Set the value of classeExclues"
 
 	classesExclues := anObject! !
-
-!Eleve methodsFor: 'accessing' stamp: 'hlsf 7/26/2024 23:17:01'!
-dys
-	"Answer the value of dys"
-
-	^ dys! !
-
-!Eleve methodsFor: 'accessing' stamp: 'hlsf 6/28/2024 17:15:44'!
-dys: anObject
-	"Set the value of dys"
-
-	dys := anObject! !
 
 !Eleve methodsFor: 'accessing' stamp: 'hlsf 7/26/2024 23:17:01'!
 email
@@ -571,12 +559,22 @@ sexe: anObject
 
 	sexe := anObject! !
 
-!Eleve methodsFor: 'printing' stamp: 'hlsf 4/22/2025 00:12:20'!
+!Eleve methodsFor: 'accessing' stamp: 'hlsf 5/14/2025 08:23:07'!
+trouble
+	^ trouble! !
+
+!Eleve methodsFor: 'accessing' stamp: 'hlsf 5/14/2025 09:37:54'!
+trouble: anObject
+	" Faire un OU logique lorsqu'une valeur précédente fut déjà attribuée "
+	trouble := trouble ifNotNil: [trouble | anObject] ifNil: [anObject]
+	! !
+
+!Eleve methodsFor: 'printing' stamp: 'hlsf 5/14/2025 08:24:39'!
 descriptionOn: str
 	self printOn: str.
 	str 	nextPutAll: ' ('; nextPut: sexe; nextPut: $); lf.
 	str nextPutAll: 'Provenance : '; nextPutAll: (ancienneClasse ifNil: ['inconnue']); lf.
-	self estDys ifTrue: [str nextPutAll: 'Dyslexique'; lf].
+	self avecTrouble ifTrue: [str nextPutAll: 'Dyslexique'; lf].
 	str nextPutAll: 'Note : '; print: note; lf.
 	str nextPutAll: 'Section(s) : '.
 	sections printElementsOn: str.
@@ -600,18 +598,18 @@ printOn: aStream
 		nextPut: $.;
 		nextPutAll: (prenom ifNil: ['YYY'])! !
 
-!Eleve methodsFor: 'testing' stamp: 'hlsf 4/21/2025 23:06:58'!
+!Eleve methodsFor: 'testing' stamp: 'hlsf 5/14/2025 08:24:39'!
+avecTrouble
+	^ trouble = true! !
+
+!Eleve methodsFor: 'testing' stamp: 'hlsf 5/14/2025 08:24:39'!
 estContraint
 " Existe-t-il une contrainte posée me concernant ? "
-	^ self estDys 
+	^ self avecTrouble 
 	or: [ classesExclues notNil
 	or: [ separerDe notNil
 	or: [ mettreAvec notNil
 	or: [ mobile not ] ] ] ]! !
-
-!Eleve methodsFor: 'testing' stamp: 'hlsf 6/30/2024 11:15:49'!
-estDys
-	^ dys = true! !
 
 !Eleve methodsFor: 'testing' stamp: 'hlsf 6/30/2024 14:10:34'!
 estExcluDe: uneClasse
@@ -709,23 +707,45 @@ importer: fichierCSV
 		upToEnd.
 	^ (eleves select: [:record | record estValide ]) asOrderedCollection! !
 
-!Eleve class methodsFor: 'instance creation' stamp: 'hlsf 4/25/2025 13:09:55'!
+!Eleve class methodsFor: 'instance creation' stamp: 'hlsf 5/14/2025 09:58:07'!
 importerContraintes: fichierCSV
-" Importation des données issues du relevé d'information en école primaire et autres "
+" Importation des données issues des données doyens (Confection classe - situations particulières) "
 	| eleves |
 	eleves := (NeoCSVReader on: fichierCSV readStream)
 		separator: $; ;
 		skipHeader ;
 		recordClass: self ;
-		addFields:  #(#ancienneClasse: #nom: #prenom:);
+		addFields:  #(nom: prenom: ancienneClasse:);
+		addIgnoredFields: 3 ;		
+		" PAI "
+		addField: #trouble: converter: [:trouble | trouble ifNil: [false] ifNotNil: [trouble first asLowercase = $o] ]; 
+		addIgnoredField ;
+		" Aménagements "
+		addField: #trouble: converter: [:trouble | trouble ifNil: [false] ifNotNil: [trouble first asLowercase = $o] ]; 
+		addIgnoredFields: 2;
+		addFields: #(mettreAvec: separerDe: );
+		" vvvv Fichier de données à stabiliser vvvv  "
+		addFields: #(classeAttribuee: classesExclues: );
+		upToEnd.
+	^ (eleves select: [:record | record estValide ]) asOrderedCollection! !
+
+!Eleve class methodsFor: 'instance creation' stamp: 'hlsf 5/14/2025 09:23:31'!
+importerContraintes9eme: fichierCSV
+" Importation des données issues du relevé d'information en école primaire "
+	| eleves |
+	eleves := (NeoCSVReader on: fichierCSV readStream)
+		separator: $; ;
+		skipHeader ;
+		recordClass: self ;
+		addFields:  #(ancienneClasse: nom: prenom:);
 		addField: #sexe: converter: [:sexe | sexe first];
 		addIgnoredFields: 2 ;
-		addFields: #( #note: #sections: );
+		addFields: #(note: sections: );
 		addIgnoredField ;
-		addField: #dys: converter: [:dys | dys ifNil: [false] ifNotNil: [				dys = '1'] 				];
-		addFields: #(#classeAttribuee: #classesExclues: #separerDe: #mettreAvec:);
+		addField: #trouble: converter: [:dys | dys ifNil: [false] ifNotNil: [dys = '1'] ];
+		addFields: #(classeAttribuee: classesExclues: separerDe: mettreAvec:);
 		upToEnd.
-	^ (eleves select: [:record | 		record estValide ]) asOrderedCollection! !
+	^ (eleves select: [:record | record estValide ]) asOrderedCollection! !
 
 !GroupeOption methodsFor: 'accessing' stamp: 'hlsf 4/18/2025 12:43:54'!
 classe
@@ -832,6 +852,11 @@ collecterElevesEnsemble
 					unGroupe addAll: anotherGroup] ] ] ].
 	elevesEnsemble := elevesEnsemble collect: [:each | each asSet]! !
 
+!Volee9 methodsFor: 'eleves' stamp: 'hlsf 5/14/2025 08:25:14'!
+elevesAvecTrouble
+" Eleves avec troubles, pas encore placés dans une classe " 
+	^ self elevesSansClasse select: [:each | each avecTrouble]! !
+
 !Volee9 methodsFor: 'eleves' stamp: 'hlsf 4/18/2025 23:09:26'!
 elevesDansClasses
 
@@ -839,11 +864,6 @@ elevesDansClasses
 		inject: OrderedCollection new 
 		into: [:elevesDansClasses :classe | 
 			elevesDansClasses addAll: classe eleves; yourself]! !
-
-!Volee9 methodsFor: 'eleves' stamp: 'hlsf 4/21/2025 20:51:57'!
-elevesDys
-" Eleves avec troubles dyslexique, pas encore placés dans une classe " 
-	^ self elevesSansClasse select: [:each | each estDys]! !
 
 !Volee9 methodsFor: 'eleves' stamp: 'hlsf 6/30/2024 16:00:19'!
 elevesSansClasse
@@ -878,12 +898,12 @@ trouverProcheEleve: unPatronyme
 		detect: [:unEleve | unEleve procheDe:  unPatronyme ] 
 		ifNone: [nil]! !
 
-!Volee9 methodsFor: 'affecter' stamp: 'hlsf 4/18/2025 23:29:18'!
+!Volee9 methodsFor: 'affecter' stamp: 'hlsf 5/14/2025 08:22:51'!
 calculer
 	" Calculer une nouvelle volée "
 	
 	self preparerDonnees;
-		ventilerElevesDys ;
+		ventilerElevesAvecTrouble ;
 		ventilerElevesEnsemble ;
 		ventilerSelonSexe.
 				
@@ -898,13 +918,13 @@ preparerDonnees
 			eleve classeAttribuee ifNotNil: [:classe | classe enleverEleve: eleve]] ].
 	self	collecterElevesEnsemble! !
 
-!Volee9 methodsFor: 'affecter' stamp: 'hlsf 4/23/2025 12:09:48'!
-ventilerElevesDys
-" Ventiler les élèves dyslexiques non encore affectés dans les classes avec place.
-  Trier les classes selon le nombre d'élève dys, vérifier les incompatibilités entre élèves "
-	self elevesDys shuffled do: [:unEleve | | ensemble |
+!Volee9 methodsFor: 'affecter' stamp: 'hlsf 5/14/2025 08:25:14'!
+ventilerElevesAvecTrouble
+" Ventiler les élèves avec troubles et non encore affectés dans les classes avec place.
+  Trier les classes selon le nombre d'élève avec trouble, vérifier les incompatibilités entre élèves "
+	self elevesAvecTrouble shuffled do: [:unEleve | | ensemble |
 		ensemble := self mettreAvec: unEleve.
-		(self classesAvecPlace shuffled sort: [:cl1 :cl2 | cl1 dys < cl2 dys]) 
+		(self classesAvecPlace shuffled sort: [:cl1 :cl2 | cl1 trouble < cl2 trouble]) 
 			detect: [:uneClasse | uneClasse sontCompatibles: ensemble ]
 			ifFound: [:saClasse | 
 				saClasse ajouterEleves: ensemble.
@@ -1187,20 +1207,20 @@ filtrerSections: filtreSections
 	eleves := eleves select: [:unEleve | 
 		filtreSections includesAnyOf: unEleve sections]! !
 
-!Volee9 methodsFor: 'import/export' stamp: 'hlsf 4/25/2025 11:52:56'!
+!Volee9 methodsFor: 'import/export' stamp: 'hlsf 5/14/2025 08:24:39'!
 fusionnerContraintesEleves
-	| infoEleves |
+	| contraintesEleves |
 	self assert: classes notNil description: 'Importer classes d''abord'.
 	self assert: eleves notNil description: 'Importer eleves de SMOG d''abord'.
-	infoEleves := Eleve importerContraintes: self importPath // csvContraintes .
+	contraintesEleves := self importerContraintesEleves .
 	" Fusionner les contraintes dans Eleves "
 	eleves do: [:unEleve | 
-		(self trouverEleve: unEleve patronyme dans: infoEleves)
+		(self trouverEleve: unEleve patronyme dans: contraintesEleves)
 			ifNotNil:  [:infoEleve |
 				unEleve 
 					classeAttribuee: infoEleve classeAttribuee ;
 					classesExclues: infoEleve classesExclues ;
-					dys: infoEleve estDys;
+					trouble: infoEleve avecTrouble;
 					ancienneClasse: infoEleve ancienneClasse ;
 					mettreAvec: infoEleve mettreAvec ;
 					separerDe: infoEleve separerDe ;
@@ -1216,6 +1236,11 @@ importPath
 !Volee9 methodsFor: 'import/export' stamp: 'hlsf 4/25/2025 11:57:17'!
 importerClasses
 	classes := Classe importer: self importPath // csvClasses ! !
+
+!Volee9 methodsFor: 'import/export' stamp: 'hlsf 5/14/2025 08:15:50'!
+importerContraintesEleves
+
+	^ Eleve importerContraintes9eme: self importPath // csvContraintes! !
 
 !Volee9 methodsFor: 'import/export' stamp: 'hlsf 4/25/2025 11:52:38'!
 importerEleves
