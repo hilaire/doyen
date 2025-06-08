@@ -1,6 +1,6 @@
-'From Cuis7.3 [latest update: #7099] on 7 June 2025 at 9:29:44 pm'!
+'From Cuis7.3 [latest update: #7099] on 8 June 2025 at 6:56:25 pm'!
 'Description '!
-!provides: 'Doyen' 1 49!
+!provides: 'Doyen' 1 51!
 !requires: 'Goodies' 1 11 nil!
 !requires: 'Neo-CSV-Core' 1 2 nil!
 !requires: 'UI-Panel' 1 123 nil!
@@ -81,7 +81,7 @@ GroupeOption class
 
 !classDefinition: #Volee9 category: #'Doyen-Classes'!
 Object subclass: #Volee9
-	instanceVariableNames: 'eleves classes elevesEnsemble voleePreferee csvEleves csvClasses csvContraintes csvGroupes'
+	instanceVariableNames: 'eleves classes elevesEnsemble voleePreferee csvEleves csvClasses csvContraintes csvGroupes filtre'
 	classVariableNames: ''
 	poolDictionaries: ''
 	category: 'Doyen-Classes'!
@@ -131,7 +131,7 @@ ClasseView class
 
 !classDefinition: #VoleeWindow category: #'Doyen-Classes'!
 SystemWindow subclass: #VoleeWindow
-	instanceVariableNames: 'scoreLabel qtyEntry classesView filesToolbar elevesBtn contraintesBtn classesBtn groupesBtn notesBtn'
+	instanceVariableNames: 'scoreLabel qtyEntry classesView filesToolbar elevesBtn contraintesBtn classesBtn groupesBtn notesBtn filtreBtn'
 	classVariableNames: ''
 	poolDictionaries: ''
 	category: 'Doyen-Classes'!
@@ -263,7 +263,11 @@ classe;	option;	groupe;	effectif
 !Volee11 commentStamp: '<historical>' prior: 0!
 Lire les commentaires de ma classe parent!
 
-!Classe methodsFor: 'accessing' stamp: 'hlsf 6/30/2024 13:19:55'!
+!Classe methodsFor: 'accessing' stamp: 'hlsf 6/8/2025 12:09:35'!
+ajouterDansUnGroupe: unEleve
+	self subclassResponsibility ! !
+
+!Classe methodsFor: 'accessing' stamp: 'hlsf 6/8/2025 12:09:20'!
 ajouterEleve: unEleve
 " 	
 	Ajouter unEleve à ma liste d'élèves. Vérifier s'il n'est pas déjà dans une autre classe
@@ -272,7 +276,8 @@ ajouterEleve: unEleve
 		ifFalse: [	
 			eleves add: unEleve.
 			unEleve classeAttribuee estClasse ifTrue: [unEleve classeAttribuee enleverEleve: unEleve].
-			unEleve classeAttribuee: self ]! !
+			unEleve classeAttribuee: self.
+			self ajouterDansUnGroupe: unEleve ]! !
 
 !Classe methodsFor: 'accessing' stamp: 'hlsf 6/6/2025 12:08:24'!
 ajouterEleves: unEnsemble
@@ -314,15 +319,15 @@ eleves: uneCollection
 " A ne pas utiliser,  à moins de savoir ce que tu fais "
 	eleves := uneCollection ! !
 
-!Classe methodsFor: 'accessing' stamp: 'hlsf 6/6/2025 17:18:04'!
+!Classe methodsFor: 'accessing' stamp: 'hlsf 6/8/2025 12:12:47'!
+enleverDeGroupe: unEleve
+	^ self subclassResponsibility ! !
+
+!Classe methodsFor: 'accessing' stamp: 'hlsf 6/8/2025 12:15:31'!
 enleverEleve: unEleve
 	eleves remove: unEleve.
 	unEleve classeAttribuee: nil.
-	groupes detect: [:unGroupe |unGroupe contient: unEleve]
-		ifFound: [:sonGroupe | sonGroupe enleverEleve: unEleve]
-		ifNone: [	" élève sans groupe, est-ce normal ?"
-			(unEleve est9e and: [unEleve option isNil]) ifFalse: [
-				Transcript show: unEleve; show: ' sans groupe'; cr	] ].
+	self enleverDeGroupe: unEleve
 ! !
 
 !Classe methodsFor: 'accessing' stamp: 'hlsf 6/7/2025 12:50:09'!
@@ -362,6 +367,18 @@ capacite
 
 	^ capacite! !
 
+!Classe methodsFor: 'metric' stamp: 'hlsf 6/8/2025 11:50:18'!
+ecartType
+	| moyClasse |
+	moyClasse := self note.
+	^ [((eleves sum: [:unEleve | (moyClasse - unEleve note) squared]) / self effectif ) sqrt] 
+		on: Error 
+		do: 0! !
+
+!Classe methodsFor: 'metric' stamp: 'hlsf 6/8/2025 11:13:42'!
+effectif
+	^ eleves size! !
+
 !Classe methodsFor: 'metric' stamp: 'hlsf 4/18/2025 15:18:35'!
 elevesSeuls
 "
@@ -377,9 +394,9 @@ filles
 garcons
 	^ eleves count: [:each | each estGarcon ]! !
 
-!Classe methodsFor: 'metric' stamp: 'hlsf 4/19/2025 13:12:55'!
+!Classe methodsFor: 'metric' stamp: 'hlsf 6/8/2025 11:14:23'!
 note
-	^ [(eleves sum: [:unEleve | unEleve note]) / eleves size] on: Error do: 0! !
+	^ [(eleves sum: [:unEleve | unEleve note]) / self effectif] on: Error do: 0! !
 
 !Classe methodsFor: 'metric' stamp: 'hlsf 6/7/2025 12:51:40'!
 placesGroupes: uneOption
@@ -396,7 +413,31 @@ trouble
 	" Indique le nombre d'élèves dys "
 	^ eleves count: [:each | each avecTrouble]! !
 
-!Classe methodsFor: 'printing' stamp: 'hlsf 6/6/2025 15:59:07'!
+!Classe methodsFor: 'printing' stamp: 'hlsf 6/8/2025 11:52:27'!
+descriptionOn: stream
+	stream nextPutAll: nom bold.
+	sections 
+		do: [:uneSection | stream nextPutAll: uneSection bold]
+		separatedBy: [stream nextPut: $/].
+	stream lf.
+	stream
+		nextPutAll: 'Effectif : '; print: self effectif; lf;
+		nextPutAll: 'Capacité : '; print: capacite; lf;
+		nextPutAll: 'Filles : '; print: self filles; lf;
+		nextPutAll: 'Garçons : '; print: self garcons; lf;
+		nextPutAll: 'Elève(s) isolé(s) : '; print: self elevesSeuls ; lf;
+		nextPutAll: 'Elève(s) avec trouble : ' ; print: self trouble; lf;
+		nextPutAll: 'Moyenne disciplines principales : ';	nextPutAll: (self note printStringFractionDigits: 1); lf;
+		nextPutAll: 'σ = '; nextPutAll: (self ecartType printStringFractionDigits: 2); lf.
+	groupes ifNotEmpty: [
+		stream nextPutAll: 'Options : ' under ;lf.
+		groupes 
+			do: [:groupe |stream tab; print: groupe]
+			separatedBy: [stream lf] ]
+
+	! !
+
+!Classe methodsFor: 'printing' stamp: 'hlsf 6/8/2025 11:41:08'!
 printOn: stream
 	stream nextPutAll: nom.
 	sections ifNotNil: [sections 
@@ -404,19 +445,19 @@ printOn: stream
 		separatedBy: [stream nextPut: $/] ].
 	stream
 		nextPutAll: ' ('; 
-		print: eleves size;
+		print: self effectif;
 		nextPut: $/;
 		print: capacite; 
-		nextPutAll: ' t' ;
-		print: self trouble;
-		nextPutAll: ' g';
-		print: self garcons;
 		nextPutAll: ' f';
 		print: self filles;
-		nextPutAll: ' s';
-		nextPutAll: (self note printStringFractionDigits: 1);
+		nextPutAll: ' g';
+		print: self garcons;
 		nextPutAll: ' i';
 		print: self elevesSeuls ;
+		nextPutAll: ' t' ;
+		print: self trouble;
+		nextPutAll: ' s';
+		nextPutAll: (self note printStringFractionDigits: 1);
 		nextPut: $)
 	! !
 
@@ -446,9 +487,9 @@ estLogeable: unEleve
 estOptionCompatible: uneOption
 	self subclassResponsibility ! !
 
-!Classe methodsFor: 'testing' stamp: 'hlsf 6/6/2025 15:59:07'!
+!Classe methodsFor: 'testing' stamp: 'hlsf 6/8/2025 11:14:08'!
 estPleine
-	^ eleves size = capacite ! !
+	^ self effectif = capacite ! !
 
 !Classe methodsFor: 'testing' stamp: 'hlsf 6/6/2025 18:41:14'!
 sontCompatibles: unEnsemble
@@ -507,20 +548,20 @@ capaciteGroupes
 
 	^ groupes inject: 0 into: [:sum :unGroupe | sum + unGroupe capacite]! !
 
-!Classe10e methodsFor: 'accessing' stamp: 'hlsf 6/6/2025 18:11:33'!
-ajouterEleve: unEleve
-	| groupesCompatibles |
-	super ajouterEleve: unEleve.
+!Classe10e methodsFor: 'accessing' stamp: 'hlsf 6/8/2025 12:10:39'!
+ajouterDansUnGroupe: unEleve
+	| groupesCompatibles | 
 	groupesCompatibles := groupes select: [:groupe | groupe option = unEleve option and: [groupe estPlein not] ].
 	groupesCompatibles ifEmpty: [self error: 'Aucune place dans un groupe'].
 	groupesCompatibles shuffled first ajouterEleve: unEleve ! !
 
-!Classe10e methodsFor: 'accessing' stamp: 'hlsf 6/6/2025 17:19:40'!
-enleverEleve: unEleve
-	super enleverEleve: unEleve.
+!Classe10e methodsFor: 'accessing' stamp: 'hlsf 6/8/2025 12:14:33'!
+enleverDeGroupe: unEleve
 	groupes detect: [:unGroupe |unGroupe contient: unEleve]
 		ifFound: [:sonGroupe | sonGroupe enleverEleve: unEleve]
-		ifNone: [	Transcript show: unEleve; show: ' sans groupe'; cr	]! !
+		ifNone: [	" élève sans groupe, anormal "
+			Transcript show: unEleve; show: ' sans groupe'; cr	].
+! !
 
 !Classe9e methodsFor: 'testing' stamp: 'hlsf 6/6/2025 14:33:34'!
 estOptionCompatible: uneOption
@@ -539,14 +580,20 @@ placesGroupes: option
 			option = #SAE ifFalse: [self error: 'Option SAE attentdue'].
 			super placesGroupes: #SAE ]! !
 
-!Classe9e methodsFor: 'metric' stamp: 'hlsf 6/6/2025 18:44:41'!
+!Classe9e methodsFor: 'metric' stamp: 'hlsf 6/8/2025 11:15:01'!
 placesHorsOption
 	" Nombre de places disponible hors option"
 	^ groupes 
 		ifEmpty:  [" classe hors SAE sans option "
-			capacite - eleves size]
+			capacite - self effectif ]
 		ifNotEmpty: [" classe SAE, décompté sa capacité "
-			capacite - eleves size - groupes first capacite ]! !
+			capacite - self effectif - groupes first capacite ]! !
+
+!Classe9e methodsFor: 'accessing' stamp: 'hlsf 6/8/2025 12:10:09'!
+ajouterDansUnGroupe: unEleve 
+	unEleve option ifNotNil: [
+		unEleve option = #SAE ifFalse: [self error: 'Option SAE attentdue'].
+		groupes first ajouterEleve: unEleve]! !
 
 !Classe9e methodsFor: 'accessing' stamp: 'hlsf 6/6/2025 17:26:00'!
 ajouterEleve: unEleve
@@ -554,6 +601,13 @@ ajouterEleve: unEleve
 	unEleve option ifNotNil: [
 		unEleve option = #SAE ifFalse: [self error: 'Option SAE attentdue'].
 		groupes first ajouterEleve: unEleve]! !
+
+!Classe9e methodsFor: 'accessing' stamp: 'hlsf 6/8/2025 12:13:16'!
+enleverDeGroupe: unEleve
+	groupes detect: [:unGroupe |unGroupe contient: unEleve]
+		ifFound: [:sonGroupe | sonGroupe enleverEleve: unEleve]
+		ifNone: [	" élève hors SAE, rien à faire "].
+! !
 
 !Classe9e methodsFor: 'accessing' stamp: 'hlsf 6/6/2025 17:22:00'!
 enleverEleve: unEleve
@@ -751,10 +805,10 @@ trouble: anObject
 	trouble := trouble ifNotNil: [trouble | anObject] ifNil: [anObject]
 	! !
 
-!Eleve methodsFor: 'printing' stamp: 'hlsf 6/7/2025 21:29:04'!
+!Eleve methodsFor: 'printing' stamp: 'hlsf 6/8/2025 11:08:05'!
 descriptionOn: str
-	self printOn: str.
-	str 	nextPutAll: ' ('; nextPut: sexe; nextPut: $); lf.
+	str nextPutAll: nom bold; space; nextPutAll: prenom bold.
+	str 	nextPutAll: sexe asString super; lf.
 	str nextPutAll: 'Provenance : '; nextPutAll: (ancienneClasse ifNil: ['inconnue']); lf.
 	self avecTrouble ifTrue: [str nextPutAll: 'Dyslexique'; lf].
 	str nextPutAll: 'Note : '; print: note; lf.
@@ -1068,13 +1122,13 @@ option: anObject
 places
 	^ capacite - self effectif ! !
 
-!GroupeOption methodsFor: 'printing' stamp: 'hlsf 6/6/2025 18:23:16'!
+!GroupeOption methodsFor: 'printing' stamp: 'hlsf 6/8/2025 11:33:11'!
 printOn: stream
 	stream 	nextPutAll: 'groupe ';
 		print: groupe; nextPut: $/; nextPutAll: option;
 		nextPut: Character space.
 	stream 
-		nextPut: $(; print: eleves size; nextPut: $/; print: capacite; nextPut: $)
+		nextPut: $(; print: self effectif; nextPut: $/; print: capacite; nextPut: $)
 	
 	! !
 
@@ -1152,9 +1206,22 @@ elevesDansClasses
 		into: [:elevesDansClasses :classe | 
 			elevesDansClasses addAll: classe eleves; yourself]! !
 
+!Volee9 methodsFor: 'eleves' stamp: 'hlsf 6/8/2025 14:44:41'!
+elevesSAE
+" Eleves SAE " 
+	^ (eleves select: [:each | each option = #SAE]) intersection: self elevesSansClasse ! !
+
 !Volee9 methodsFor: 'eleves' stamp: 'hlsf 6/30/2024 16:00:19'!
 elevesSansClasse
 	^ eleves difference: self elevesDansClasses! !
+
+!Volee9 methodsFor: 'eleves' stamp: 'hlsf 6/8/2025 18:21:48'!
+filles
+	^ classes sum: [:unClasse | unClasse filles]! !
+
+!Volee9 methodsFor: 'eleves' stamp: 'hlsf 6/8/2025 18:21:55'!
+garcons
+	^ classes sum: [:unClasse | unClasse garcons ]! !
 
 !Volee9 methodsFor: 'eleves' stamp: 'hlsf 4/18/2025 23:35:54'!
 mettreAvec: unEleve
@@ -1185,10 +1252,11 @@ trouverProcheEleve: unPatronyme
 		detect: [:unEleve | unEleve procheDe:  unPatronyme ] 
 		ifNone: [nil]! !
 
-!Volee9 methodsFor: 'affecter' stamp: 'hlsf 6/6/2025 18:30:55'!
+!Volee9 methodsFor: 'affecter' stamp: 'hlsf 6/8/2025 14:49:39'!
 calculer
 	" Calculer une nouvelle volée "
 	self preparerDonnees;
+		ventilerElevesSAE;
 		ventilerElevesAvecTrouble ;
 		ventilerElevesEnsemble ;
 		ventilerSelonSexe.
@@ -1234,6 +1302,19 @@ ventilerElevesEnsemble
 			ifNone: [Transcript show: unGroupe ; show: ' pas de place pour ce groupe'; cr]
 			]! !
 
+!Volee9 methodsFor: 'affecter' stamp: 'hlsf 6/8/2025 14:45:51'!
+ventilerElevesSAE
+"
+	Ventiler les élèves dans la classe SAE
+"
+	self elevesSAE shuffled do: [:unEleve | 
+		self classesAvecPlace
+			detect: [:uneClasse | uneClasse estCompatible: unEleve	]
+			ifFound: [:saClasse | 
+				saClasse ajouterEleve: unEleve]
+			ifNone: [	Transcript show: unEleve; show: ' pas de classe SAE '; cr] ]
+		! !
+
 !Volee9 methodsFor: 'affecter' stamp: 'hlsf 6/5/2025 16:07:14'!
 ventilerSelonSexe
 "
@@ -1249,13 +1330,27 @@ ventilerSelonSexe
 			]
 		! !
 
-!Volee9 methodsFor: 'initialization' stamp: 'hlsf 6/5/2025 23:18:18'!
+!Volee9 methodsFor: 'accessing' stamp: 'hlsf 6/8/2025 17:42:32'!
+filtre
+	^ filtre
+	! !
+
+!Volee9 methodsFor: 'accessing' stamp: 'hlsf 6/8/2025 17:42:38'!
+filtre: array
+	filtre := array
+	! !
+
+!Volee9 methodsFor: 'accessing' stamp: 'hlsf 6/8/2025 17:40:19'!
+filtres
+	^ #( #( R3 MI) #(R2) #(R1) )! !
+
+!Volee9 methodsFor: 'initialization' stamp: 'hlsf 6/8/2025 17:44:21'!
 importerEtInitialiser
 "	Importer les données 	"
 	self	importerEleves;
 		importerClasses;
 		importerGroupes;
-		filtrer;
+		filtrerSelon: filtre;
 		insererContraintesEleves.
 "	Initialiser les objets avec les données 	"
 	self	initPreattribuerClasses;
@@ -1334,9 +1429,13 @@ initPreexclureClasses
 				show: ' est à exclure des classes '; 
 				show: sesClassesExclues; cr ]! !
 
-!Volee9 methodsFor: 'initialization' stamp: 'hlsf 6/5/2025 23:14:38'!
+!Volee9 methodsFor: 'initialization' stamp: 'hlsf 6/8/2025 17:41:44'!
+initialize
+	filtre := self filtres first! !
+
+!Volee9 methodsFor: 'initialization' stamp: 'hlsf 6/8/2025 14:29:10'!
 reset
-	eleves := nil
+	voleePreferee := nil
 	! !
 
 !Volee9 methodsFor: 'metriques' stamp: 'hlsf 4/19/2025 13:12:55'!
@@ -1347,9 +1446,11 @@ ecartType
 		on: Error 
 		do: 0! !
 
-!Volee9 methodsFor: 'metriques' stamp: 'hlsf 6/7/2025 21:22:40'!
+!Volee9 methodsFor: 'metriques' stamp: 'hlsf 6/8/2025 18:51:33'!
 ecartsFilleGarcon
-	^ classes sum: [:uneClasse | (uneClasse garcons - uneClasse filles) abs]! !
+" Moyenne des écarts garcons - filles, normalisé dans [0 ; 1] "
+	^ (classes sum: [:uneClasse | 
+		(uneClasse garcons - uneClasse filles) abs / uneClasse effectif * 4 ]) / classes size! !
 
 !Volee9 methodsFor: 'metriques' stamp: 'hlsf 7/1/2024 14:33:01'!
 elevesSeuls
@@ -1372,22 +1473,28 @@ note
 " La note moyenne de toutes les classes pour MA, FR ALL "
 	^ [(classes sum: [:uneClasse | uneClasse note]) / self nbClasses ] on: Error do: 0! !
 
-!Volee9 methodsFor: 'metriques' stamp: 'hlsf 4/21/2025 13:42:01'!
+!Volee9 methodsFor: 'metriques' stamp: 'hlsf 6/8/2025 13:01:36'!
+score
+" Score en pourcent, le plus haut le meilleur "
+	^ (100 - (self scoring * 100)) printStringFractionDigits: 1! !
+
+!Volee9 methodsFor: 'metriques' stamp: 'hlsf 6/8/2025 18:53:17'!
 scoring
 "
 	Métrique de [0 ; 1] pour comparer deux volées entre elles, le plus bas le meilleur
 "
-	| c1 c2 |
-	" 18 est la note maximale ⇒ σ ∈ [0 ; 9]"
-	c1 := self ecartType / 9.
-	c2 := self elevesSeuls / 38.0 .
-	^ (0.5 * c1) + (0.5 * c2) ! !
+	| c1 c2 c3 |
+	" 6 est la note maximale ⇒ σ ∈ [0 ; 3]"
+	c1 := self ecartType / 1.5.
+	c2 := self elevesSeuls / 10.0 .
+	c3 := self ecartsFilleGarcon.
+	^ (0.2 * c1) + (0.1 * c2) + (0.7 * c3)! !
 
-!Volee9 methodsFor: 'metriques' stamp: 'hlsf 4/22/2025 11:52:15'!
+!Volee9 methodsFor: 'metriques' stamp: 'hlsf 6/8/2025 12:59:41'!
 verifierScore
 " Nous cherchons la volée avec le meilleur score "
 	^ (voleePreferee isNil 
-	or: [voleePreferee notNil and: [ voleePreferee scoring > self scoring ]])
+	or: [voleePreferee scoring > self scoring ])
 		ifTrue: [
 			'\o/ Volée avec un meilleur arrangement !!' print.
 			voleePreferee := self veryDeepCopy.
@@ -1443,28 +1550,30 @@ estCalculable
 	and: [csvClasses notNil
 	and: [csvGroupes notNil ] ] ! !
 
-!Volee9 methodsFor: 'printing' stamp: 'hlsf 4/21/2025 22:52:24'!
+!Volee9 methodsFor: 'printing' stamp: 'hlsf 6/8/2025 18:26:24'!
 printOn: stream
 	stream nextPutAll: 'Élèves : '; 	print: self nbEleves ; lf;
+		nextPutAll: 'Filles : ' magenta bold; print: self filles; lf;
+		nextPutAll: 'Garçons : ' blue bold ; print: self garcons ; lf;
 		nextPutAll: 'Élèves isolés : '; print: self elevesSeuls ; lf;		
 		nextPutAll: 'Classes : '; print: self nbClasses; lf;
 		nextPutAll: 'Capacité classes : '; print: self capaciteClasses ;lf;
 		nextPutAll: 'Élèves sans classe: '; print: self elevesSansClasse size; lf;
 		nextPutAll: 'Note moy (MA+FR+AL): '; nextPutAll: (self note printStringFractionDigits: 1); lf;
-		nextPutAll: 'Score : '; nextPutAll: (self scoring printStringFractionDigits: 2); lf;
+		nextPutAll: 'Score : '; nextPutAll: self score; nextPut: $%; lf;
 		nextPutAll: 'Ecart type : '; nextPutAll: (self ecartType printStringFractionDigits: 2); lf;		
 		nextPutAll: 'Vérifications: '; newLineTab ;
 		nextPutAll: '- élèves ensemble '; print: self checkElevesEnsembles ; newLineTab ;
 		nextPutAll: '- élèves séparés '; print: self checkElevesSepares ! !
 
-!Volee9 methodsFor: 'printing' stamp: 'hlsf 4/21/2025 22:50:53'!
+!Volee9 methodsFor: 'printing' stamp: 'hlsf 6/8/2025 13:02:33'!
 resume
 	^ String streamContents: [: str |
 	str nextPutAll: 'C'; print: self nbClasses;
 		nextPutAll: ' E'; print: self nbEleves  ;
 		nextPutAll: ' I'; print: self elevesSeuls ;
 		nextPutAll: ' X'; print: self elevesSansClasse size;
-		nextPutAll: ' Score='; nextPutAll: (self scoring printStringFractionDigits: 2);
+		nextPutAll: ' Score='; nextPutAll: self score; nextPut: $%;
 		nextPutAll: ' σ='; nextPutAll: (self ecartType printStringFractionDigits: 2);
 		nextPutAll: ' Vérif. '; print: self checks]! !
 
@@ -1492,17 +1601,13 @@ exporterClasses
 	self inform: 'Volée sauvegardée dans le dossier 
 ', path pathName ! !
 
-!Volee9 methodsFor: 'import/export' stamp: 'hlsf 6/6/2025 11:21:52'!
-filtrer
-	self filtrerSections: #(R3 MI)! !
-
-!Volee9 methodsFor: 'import/export' stamp: 'hlsf 6/5/2025 23:31:23'!
-filtrerSections: filtreSections
+!Volee9 methodsFor: 'import/export' stamp: 'hlsf 6/8/2025 17:44:06'!
+filtrerSelon: unFiltre
 " Retirer les classes et les élèves qui ne sont pas dans la collection filtreSections "
 	classes := classes select: [:uneClasse |  
-		filtreSections includesAnyOf: uneClasse sections].
+		unFiltre includesAnyOf: uneClasse sections].
 	eleves := eleves select: [:unEleve | 
-		filtreSections includes: unEleve section]! !
+		unFiltre includes: unEleve section]! !
 
 !Volee9 methodsFor: 'import/export' stamp: 'hlsf 4/25/2025 11:51:32'!
 importPath
@@ -1576,10 +1681,6 @@ eleveClass
 exportPath
 	^ DirectoryEntry projectBaseDirectory / 'export' / 'Volee10e'! !
 
-!Volee10 methodsFor: 'import/export' stamp: 'hlsf 6/6/2025 11:22:04'!
-filtrer
-	self filtrerSections: #(LS MI)! !
-
 !Volee10 methodsFor: 'import/export' stamp: 'hlsf 6/6/2025 16:03:32'!
 importerGroupes
 	super importerGroupes.
@@ -1611,14 +1712,18 @@ insererNotesEleves
 					show: 'Pas de note pour ';
 					show: unEleve; cr] ]! !
 
-!Volee10 methodsFor: 'initialization' stamp: 'hlsf 6/5/2025 16:39:50'!
+!Volee10 methodsFor: 'initialization' stamp: 'hlsf 6/8/2025 17:40:37'!
+filtres
+	^ #( #( LS MI) #(LC) #(CT) )! !
+
+!Volee10 methodsFor: 'initialization' stamp: 'hlsf 6/8/2025 17:44:33'!
 importerEtInitialiser
 "	Importer les données 	"
 	self	importerEleves;
 		insererNotesEleves;
 		importerClasses;
 		importerGroupes;
-		filtrer;
+		filtrerSelon: filtre;
 		insererContraintesEleves.
 "	Initialiser les objets avec les données 	"
 	self	initPreattribuerClasses;
@@ -1641,18 +1746,6 @@ classeClass
 !Volee10 methodsFor: 'meta' stamp: 'hlsf 6/5/2025 23:27:07'!
 eleveClass
 	^ Eleve ! !
-
-!Volee10 methodsFor: 'metriques' stamp: 'hlsf 6/7/2025 21:26:13'!
-scoring
-"
-	Métrique de [0 ; 1] pour comparer deux volées entre elles, le plus bas le meilleur
-"
-	| c1 c2 c3 |
-	" 6 est la note maximale ⇒ σ ∈ [0 ; 3]"
-	c1 := self ecartType / 3.
-	c2 := self elevesSeuls / 20.0 .
-	c3 := self ecartsFilleGarcon / classes size.
-	^ (0.3 * c1) + (0.2 * c2) + (0.5 * c3)! !
 
 !Volee11 methodsFor: 'import/export' stamp: 'hlsf 4/25/2025 16:31:02'!
 exportPath
@@ -1787,16 +1880,20 @@ initialize
 			addMorph: (EleveView on: unEleve)
 			layoutSpec: LayoutSpec keepMorphExtent]! !
 
+!ClasseView methodsFor: 'halos and balloon help' stamp: 'hlsf 6/8/2025 11:34:37'!
+balloonText
+	^ Text streamContents: [:str | model descriptionOn: str]! !
+
 !ClasseView class methodsFor: 'as yet unclassified' stamp: 'hlsf 4/20/2025 12:05:13'!
 on: uneClasse
 	^ self basicNew 
 		model: uneClasse;
 		initialize ! !
 
-!VoleeWindow methodsFor: 'GUI building' stamp: 'hlsf 4/25/2025 12:48:34'!
-ajoutBouton: nom action: symbol
+!VoleeWindow methodsFor: 'GUI building' stamp: 'hlsf 6/8/2025 14:23:07'!
+ajoutA: row bouton: nom action: symbol
 	| button |
-	filesToolbar 
+	row 
 		addMorph: (LabelMorph contents:  nom capitalized , ' : ');
 		addMorph: (button := PluggableButtonMorph
 			model: self
@@ -1804,7 +1901,7 @@ ajoutBouton: nom action: symbol
 			label: 'Choisir fichier').
 	^ button! !
 
-!VoleeWindow methodsFor: 'GUI building' stamp: 'hlsf 4/25/2025 13:35:18'!
+!VoleeWindow methodsFor: 'GUI building' stamp: 'hlsf 6/8/2025 14:14:56'!
 buildComputeToolbar
 	| row |
 	 qtyEntry := SimpleNumberEntryMorph 
@@ -1820,6 +1917,11 @@ buildComputeToolbar
 			action: #compute 
 			label: 'Calculer' ::
 			enableSelector: #canCompute );
+		addMorph: (PluggableButtonMorph 
+			model: self
+			action: #reset 
+			label: 'Reset' ::
+			enableSelector: #isComputed );
 		addMorph: scoreLabel;
 		addMorph: (PluggableButtonMorph 
 			model: self 
@@ -1829,22 +1931,27 @@ buildComputeToolbar
 			setBalloonText: 'Enregistrer cette volée sous la forme d''une collection de fichiers csv, un par classe.').
 	^ row! !
 
-!VoleeWindow methodsFor: 'GUI building' stamp: 'hlsf 6/5/2025 16:37:54'!
+!VoleeWindow methodsFor: 'GUI building' stamp: 'hlsf 6/8/2025 14:25:34'!
 buildFilesToolbar
+	| row |
 	filesToolbar 
-		ifNil: [filesToolbar := LayoutMorph newRow]
+		ifNil: [filesToolbar := LayoutMorph newColumn]
 		ifNotNil: [filesToolbar removeAllMorphs ].
 	model ifNil: [
 		filesToolbar 
 			addMorph: (LabelMorph contents: 'Choisir une volée ci-dessus.');
 			layoutSpec: (LayoutSpec keepMorphExtent offAxisEdgeWeight: 0) ]
 		ifNotNil: [
-			elevesBtn := self	ajoutBouton: 'élèves' action: #choixFichierEleves.
+			row := LayoutMorph newRow color: Color transparent.
+			elevesBtn := self	ajoutA: row bouton: 'élèves' action: #choixFichierEleves.
 			model est9e ifFalse: [ "pour les 9e note importée avec contraintes"
-				notesBtn := self ajoutBouton: 'notes' action: #choixFichierNotes ].
-			contraintesBtn := self ajoutBouton: 'contraintes élèves' action: #choixFichierContraintes.
-			classesBtn := self ajoutBouton: 'classes' action: #choixFichierClasses.
-			groupesBtn := self ajoutBouton: 'groupes d''options' action: #choixFichierGroupes ].
+				notesBtn := self ajoutA: row bouton: 'notes' action: #choixFichierNotes ].
+			contraintesBtn := self ajoutA: row bouton: 'contraintes élèves' action: #choixFichierContraintes.
+			filesToolbar addMorph: row.
+			row := LayoutMorph newRow color: Color transparent .
+			classesBtn := self ajoutA: row bouton: 'classes' action: #choixFichierClasses.
+			groupesBtn := self ajoutA: row bouton: 'groupes d''options' action: #choixFichierGroupes.
+			filesToolbar addMorph: row].
 	^ filesToolbar! !
 
 !VoleeWindow methodsFor: 'GUI building' stamp: 'hlsf 4/25/2025 13:18:17'!
@@ -1856,7 +1963,7 @@ buildMorphicWindow
 		addMorph: self buildFilesToolbar ;
 		addMorph: (classesView := FlowLayoutMorph new align: #rowTop)! !
 
-!VoleeWindow methodsFor: 'GUI building' stamp: 'hlsf 4/25/2025 10:05:39'!
+!VoleeWindow methodsFor: 'GUI building' stamp: 'hlsf 6/8/2025 18:15:49'!
 buildVoleeToolbar
 	| row group groupButtons |
 		
@@ -1869,7 +1976,13 @@ buildVoleeToolbar
 	row := LayoutMorph newRow.
 	row addMorph: (LabelMorph contents: 'Volée : ');
 		addMorph: group beRow;
-		layoutSpec: (LayoutSpec keepMorphExtent offAxisEdgeWeight: #columnLeft).
+		layoutSpec: (LayoutSpec keepMorphExtent offAxisEdgeWeight: #columnLeft);
+		addMorph: (LabelMorph contents: 'Filtre : ');
+		addMorph:(filtreBtn := PluggableButtonMorph 
+			model: self
+			action: #choixFiltres
+			label: 'filtres' ::
+			enableSelector: #isModelSelected).			
 	^ row! !
 
 !VoleeWindow methodsFor: 'GUI building' stamp: 'hlsf 4/25/2025 13:18:17'!
@@ -1877,19 +1990,23 @@ scoreVideLabel
 
 	^ 'Auncun score, calculer au moins une volée'! !
 
-!VoleeWindow methodsFor: 'updating' stamp: 'hlsf 4/25/2025 13:38:19'!
+!VoleeWindow methodsFor: 'updating' stamp: 'hlsf 6/8/2025 18:25:41'!
 update: aspect
 	super update: aspect.
 	aspect == #voleePreferee ifTrue: [ | views |
 		scoreLabel contents: model voleePreferee resume.
-		scoreLabel setBalloonText: (String streamContents: [:str |
+		scoreLabel setBalloonText: (Text streamContents: [:str |
 			model voleePreferee printOn: str]).
 		views := model voleePreferee classes sorted collect: [:classe | 
 			ClasseView on: classe].
 		classesView cells: views.
-		classesView updateLayout.
 		self changed: #isComputed]
 		! !
+
+!VoleeWindow methodsFor: 'ui' stamp: 'hlsf 6/8/2025 18:10:08'!
+ajusterBtnFiltre
+	filtreBtn label: (self printFilter: model filtre).
+	filtreBtn owner layoutNeeded: true! !
 
 !VoleeWindow methodsFor: 'ui' stamp: 'hlsf 4/25/2025 13:04:17'!
 choixFichierClasses
@@ -1951,7 +2068,17 @@ choixFichierNotes
 	model csvNotes: result name.
 	self changed: #canCompute! !
 
-!VoleeWindow methodsFor: 'ui' stamp: 'hlsf 4/21/2025 17:14:27'!
+!VoleeWindow methodsFor: 'ui' stamp: 'hlsf 6/8/2025 18:28:47'!
+choixFiltres
+	| index |
+	index := PopUpMenu 
+		withCaption:  'Choisir un filtre' 
+		chooseFrom:  (model filtres collect: [:unFiltre | self printFilter: unFiltre] ).
+	index ifNotZero: [
+		model filtre: (model filtres at: index).
+		self ajusterBtnFiltre ]! !
+
+!VoleeWindow methodsFor: 'ui' stamp: 'hlsf 6/8/2025 14:30:24'!
 compute
 	| nbFois progress |
 	nbFois := qtyEntry contents asNumber.
@@ -1963,48 +2090,70 @@ compute
 			progress incrDone: step;
 				subLabel: ('calcul volée ', indice printString, '...').			
 			model calculer].
+		self world doOneCycleNow.
+		classesView updateLayout.
+		self world restoreDisplay.
 		progress delete] forkAt: Processor userBackgroundPriority ! !
 
 !VoleeWindow methodsFor: 'ui' stamp: 'hlsf 4/25/2025 13:34:12'!
 exporterClasses
 	model ifNotNil: [model exporterClasses]! !
 
-!VoleeWindow methodsFor: 'ui' stamp: 'hlsf 4/25/2025 13:37:33'!
+!VoleeWindow methodsFor: 'ui' stamp: 'hlsf 6/8/2025 14:28:41'!
+reset
+	model reset.
+	scoreLabel contents: self scoreVideLabel.
+	classesView cells: #()! !
+
+!VoleeWindow methodsFor: 'ui' stamp: 'hlsf 6/8/2025 17:56:21'!
 select10
 	self model: Volee10 new.
 	self buildFilesToolbar.
 	classesView cells: #().
 	scoreLabel contents: self scoreVideLabel.
+	self ajusterBtnFiltre.
 	self changed: #canCompute.
 	self changed: #isComputed.! !
 
-!VoleeWindow methodsFor: 'ui' stamp: 'hlsf 4/25/2025 13:37:39'!
+!VoleeWindow methodsFor: 'ui' stamp: 'hlsf 6/8/2025 17:56:32'!
 select11
 	self model: Volee11 new.
 	self buildFilesToolbar.
 	classesView cells: #().
 	scoreLabel contents: self scoreVideLabel.
+	self ajusterBtnFiltre.
 	self changed: #canCompute.
 	self changed: #isComputed.! !
 
-!VoleeWindow methodsFor: 'ui' stamp: 'hlsf 4/25/2025 13:37:44'!
+!VoleeWindow methodsFor: 'ui' stamp: 'hlsf 6/8/2025 17:56:38'!
 select9
 	self model: Volee9 new.
 	self buildFilesToolbar.
 	classesView cells: #().
 	scoreLabel contents: self scoreVideLabel.
+	self ajusterBtnFiltre.
 	self changed: #canCompute.
 	self changed: #isComputed.! !
 
-!VoleeWindow methodsFor: 'testing' stamp: 'hlsf 4/25/2025 11:04:49'!
+!VoleeWindow methodsFor: 'testing' stamp: 'hlsf 6/8/2025 18:14:10'!
 canCompute
-	^ model notNil
+	^ self isModelSelected 
 	and: [model estCalculable ]! !
 
-!VoleeWindow methodsFor: 'testing' stamp: 'hlsf 4/25/2025 13:39:24'!
+!VoleeWindow methodsFor: 'testing' stamp: 'hlsf 6/8/2025 18:14:00'!
 isComputed
-	^ model notNil 
+	^ self isModelSelected 
 	and: [model voleePreferee notNil]! !
+
+!VoleeWindow methodsFor: 'testing' stamp: 'hlsf 6/8/2025 18:13:50'!
+isModelSelected
+	^ model notNil ! !
+
+!VoleeWindow methodsFor: 'helpers' stamp: 'hlsf 6/8/2025 18:11:54'!
+printFilter: anArray
+" An array of symbol to present in a gentle maner "
+	^ String streamContents: [:str |
+		anArray do: [:aSymbol | str nextPutAll: aSymbol asString] separatedBy: [str nextPutAll: ', ']]! !
 
 !VoleeWindow class methodsFor: 'instance creation' stamp: 'hlsf 4/25/2025 10:12:37'!
 open
@@ -2033,9 +2182,9 @@ initialize
 		borderWidth: 1;
 		color: constraintColoring . ! !
 
-!EleveView methodsFor: 'as yet unclassified' stamp: 'hlsf 4/21/2025 23:32:11'!
+!EleveView methodsFor: 'as yet unclassified' stamp: 'hlsf 6/8/2025 10:59:53'!
 balloonText
-	^ String streamContents: [:str | model descriptionOn: str]! !
+	^ Text streamContents: [:str | model descriptionOn: str]! !
 
 !EleveView class methodsFor: 'as yet unclassified' stamp: 'hlsf 4/21/2025 22:55:10'!
 on: unEleve
