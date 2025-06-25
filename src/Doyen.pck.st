@@ -1,6 +1,6 @@
-'From Cuis7.3 [latest update: #7099] on 21 June 2025 at 6:19:07 pm'!
+'From Cuis7.3 [latest update: #7099] on 25 June 2025 at 10:33:51 pm'!
 'Description '!
-!provides: 'Doyen' 1 55!
+!provides: 'Doyen' 1 59!
 !requires: 'Goodies' 1 11 nil!
 !requires: 'Neo-CSV-Core' 1 2 nil!
 !requires: 'UI-Panel' 1 123 nil!
@@ -173,10 +173,13 @@ Concernant les classe de 10e et 11:
 - sections: elle est #(LS), #(LS), #(CT)
 - groupes: contrairement à une classe de 9e, j'ai toujours des groupes d'options et l'effectif de mes groupes est égale à celui de la classe. De même tous les élèves de 9e ont une option!
 
-!Classe9e commentStamp: 'hlsf 6/6/2025 14:10:06' prior: 0!
+!Classe9e commentStamp: 'hlsf 6/25/2025 18:11:15' prior: 0!
 Concernant les classe de 9e:
-- sections: elle est #(R1), #(R2), #(R3) voire de #(R1 R2)
-- groupes: le seul groupe est d'option #SAE. donc groupes est soit une collection vide soit une collection avec un seul GroupeOption de type #SAE. Les classes d'option #SAE sont dit de type #MI, néanmoins les seuls élèves non #SAE de ce type de classe sont de section #R3. L'effectif de mon groupe #SAE est donc la plupart du temps inférieur à celui de la classe!
+- sections: elle est #(R1), #(R2), #(R3), #(R3, MI) -> classe SAE ; voire de #(R1 R2)-> classe DR
+- groupes: 
+ * pour classe SAE : le groupe est d'option #SAE. groupes a un seul GroupeOption de type #SAE. Les classes d'option #SAE sont dit de type #MI, néanmoins les élèves non #SAE de ce type de classe sont de section #R3. L'effectif de mon groupe #SAE est donc la plupart du temps inférieur à celui de la classe
+ * pour classe DR (double regroupement) : il y a deux groupes de section pour alimenter la classe, "option" #R1 et #R2. Dans cette situation les groupes d'option sont utilisé comme des groupe de section au sein de classes DR
+ * pour les autres classes : groupes est vide!
 
 !Eleve commentStamp: '<historical>' prior: 0!
 Je représente un élève avec les attributs nécessaires pour m'attribuer une classe.
@@ -206,7 +209,7 @@ Je suis un objet pour importer les notes des élèves issues de GECO!
 !GroupeOption commentStamp: '<historical>' prior: 0!
 Je représente un groupe d'une option en 9e, 10e ou 11e
 - classe : classe à laquelle je suis associée
-- option : L, S, LV, SAE (10/11LS/MI), AA, SA (10/11LC)
+- option : L, S, LV, SAE (10/11LS/MI), AA, SA (10/11LC), également section pour les classes DR
 - groupe : mon numéro de groupe
 - effectif : nombre d'élèves dans couple (classe, groupe)
 - eleves: collection d'élèves affectés à ce groupe
@@ -280,9 +283,12 @@ de l'école primaire qui comprend également les notes
 - des contraintes fournies sous forme d'un tableau lors des visites en école
 !
 
-!Classe methodsFor: 'accessing' stamp: 'hlsf 6/8/2025 12:09:35'!
+!Classe methodsFor: 'accessing' stamp: 'hlsf 6/25/2025 18:23:51'!
 ajouterDansUnGroupe: unEleve
-	self subclassResponsibility ! !
+	| groupesCompatibles | 
+	groupesCompatibles := groupes select: [:groupe | groupe option = unEleve option and: [groupe estPlein not] ].
+	groupesCompatibles ifEmpty: [self error: 'Aucune place dans un groupe'].
+	groupesCompatibles shuffled first ajouterEleve: unEleve ! !
 
 !Classe methodsFor: 'accessing' stamp: 'hlsf 6/8/2025 12:09:20'!
 ajouterEleve: unEleve
@@ -375,9 +381,9 @@ sections
 
 	^ sections! !
 
-!Classe methodsFor: 'accessing' stamp: 'hlsf 6/7/2025 12:07:31'!
+!Classe methodsFor: 'accessing' stamp: 'hlsf 6/25/2025 17:20:52'!
 sections: anObject
-	sections := anObject virguleSeparer collect: [:uneSection |  uneSection asUppercase asSymbol]! !
+	sections := (anObject virguleSeparer collect: [:uneSection |  uneSection asUppercase asSymbol]) sorted! !
 
 !Classe methodsFor: 'initialization' stamp: 'hlsf 4/18/2025 17:32:48'!
 initialize
@@ -501,23 +507,31 @@ estCompatible: unEleve
 		and: [eleves noneSatisfy: [:chaqueEleve | 
 			(chaqueEleve estSepareDe: unEleve) or: [unEleve estSepareDe: chaqueEleve] ] ] ] ]! !
 
-!Classe methodsFor: 'testing' stamp: 'hlsf 6/6/2025 11:28:43'!
+!Classe methodsFor: 'testing' stamp: 'hlsf 6/25/2025 17:28:51'!
 estCursusCompatible: unEleve
-" vérifions qu'unEleve partage les mêmes section et option que la classe"
+" vérifions qu'unEleve partage les mêmes section et groupe (d'option) que la classe"
 	^ (sections includes: unEleve section) 
-	and: [self estOptionCompatible: unEleve option]! !
+	and: [self estGroupeCompatible: unEleve option]! !
+
+!Classe methodsFor: 'testing' stamp: 'hlsf 6/25/2025 18:42:45'!
+estDR
+	^ sections asArray = #(R1 R2)! !
+
+!Classe methodsFor: 'testing' stamp: 'hlsf 6/25/2025 17:26:48'!
+estGroupeCompatible: uneOption
+	self subclassResponsibility ! !
 
 !Classe methodsFor: 'testing' stamp: 'hlsf 6/7/2025 11:36:33'!
 estLogeable: unEleve
 	^ self sontLogeables: (Array with: unEleve)! !
 
-!Classe methodsFor: 'testing' stamp: 'hlsf 6/6/2025 14:12:59'!
-estOptionCompatible: uneOption
-	self subclassResponsibility ! !
-
 !Classe methodsFor: 'testing' stamp: 'hlsf 6/8/2025 11:14:08'!
 estPleine
 	^ self effectif = capacite ! !
+
+!Classe methodsFor: 'testing' stamp: 'hlsf 6/25/2025 18:43:01'!
+estSAE
+	^ sections asArray = #(MI R3)! !
 
 !Classe methodsFor: 'testing' stamp: 'hlsf 6/6/2025 18:41:14'!
 sontCompatibles: unEnsemble
@@ -527,9 +541,9 @@ sontCompatibles: unEnsemble
 	^ (unEnsemble allSatisfy: [:unEleve | self estCompatible: unEleve])
 	and: [self sontLogeables: unEnsemble]! !
 
-!Classe methodsFor: 'testing' stamp: 'hlsf 6/7/2025 12:48:09'!
+!Classe methodsFor: 'testing' stamp: 'hlsf 6/25/2025 17:11:22'!
 sontLogeables: unEnsemble
-" Avons nous la place pour placer les élève de cet ensemble, en tenant compte de l'option de chacun "
+" Avons nous la place pour placer les élèves de cet ensemble, en tenant compte de l'option de chacun "
 	(self optionsDe: unEnsemble) keysAndValuesDo: [:option :effectif | 
 		effectif <= (self placesGroupes: option) ifFalse: [^false] ].
 	^ true! !
@@ -565,8 +579,8 @@ importer: fichierCSV
 		addIntegerField: #capacite: ;
 		upToEnd! !
 
-!Classe10e methodsFor: 'testing' stamp: 'hlsf 6/6/2025 14:34:47'!
-estOptionCompatible: uneOption
+!Classe10e methodsFor: 'testing' stamp: 'hlsf 6/25/2025 17:26:48'!
+estGroupeCompatible: uneOption
 " uneOption : #L, #S, #LV, #AA, #SA ou #SAE "
 	^ groupes anySatisfy: [:groupe | groupe option == uneOption ]! !
 
@@ -576,13 +590,6 @@ capaciteGroupes
 
 	^ groupes inject: 0 into: [:sum :unGroupe | sum + unGroupe capacite]! !
 
-!Classe10e methodsFor: 'accessing' stamp: 'hlsf 6/8/2025 12:10:39'!
-ajouterDansUnGroupe: unEleve
-	| groupesCompatibles | 
-	groupesCompatibles := groupes select: [:groupe | groupe option = unEleve option and: [groupe estPlein not] ].
-	groupesCompatibles ifEmpty: [self error: 'Aucune place dans un groupe'].
-	groupesCompatibles shuffled first ajouterEleve: unEleve ! !
-
 !Classe10e methodsFor: 'accessing' stamp: 'hlsf 6/8/2025 12:14:33'!
 enleverDeGroupe: unEleve
 	groupes detect: [:unGroupe |unGroupe contient: unEleve]
@@ -591,8 +598,14 @@ enleverDeGroupe: unEleve
 			Transcript show: unEleve; show: ' sans groupe'; cr	].
 ! !
 
-!Classe9e methodsFor: 'testing' stamp: 'hlsf 6/6/2025 14:33:34'!
-estOptionCompatible: uneOption
+!Classe9e methodsFor: 'testing' stamp: 'hlsf 6/25/2025 17:51:25'!
+estCursusCompatible: unEleve
+	^ self estDR 
+		ifTrue: [sections includes: unEleve section] "suffit pour vérifier, groupes inutiles à ce stade pour une DR" 
+		ifFalse: [super estCursusCompatible: unEleve]! !
+
+!Classe9e methodsFor: 'testing' stamp: 'hlsf 6/25/2025 17:26:48'!
+estGroupeCompatible: uneOption
 " uneOption : #SAE ou nil "
 	uneOption ifNil: [ ^ true]. " Pas de contrainte d'option pour cet élève "
 	^ groupes 
@@ -600,19 +613,50 @@ estOptionCompatible: uneOption
 		ifNotEmpty: [groupes first option == uneOption ]
 ! !
 
-!Classe9e methodsFor: 'metric' stamp: 'hlsf 6/21/2025 11:15:57'!
-placesGroupes: option
-	^ option isNil 
-		ifTrue:  [capacite - self effectif]
-		ifFalse: [
-			option = #SAE ifFalse: [self error: 'Option SAE attentdue'].
-			super placesGroupes: #SAE ]! !
+!Classe9e methodsFor: 'testing' stamp: 'hlsf 6/25/2025 18:03:03'!
+sectionsDe: unEnsemble
+	^ self estDR 
+		ifTrue: [" Les groupes sont les deux sections de la classe DR "
+			| lesSections |
+			lesSections := Dictionary new.
+			unEnsemble do: [:unEleve | 
+				lesSections 
+					at: unEleve section 
+					put: (lesSections at: unEleve section ifAbsentPut: [0]) + 1].
+			lesSections ] 
+		ifFalse: [self error: nom, ' n''est pas une classe DR (groupe de section impossible)']! !
 
-!Classe9e methodsFor: 'accessing' stamp: 'hlsf 6/8/2025 12:10:09'!
+!Classe9e methodsFor: 'testing' stamp: 'hlsf 6/25/2025 18:33:20'!
+sontLogeables: unEnsemble
+	self estDR
+		ifTrue: [
+			(self sectionsDe: unEnsemble) keysAndValuesDo: [:section :effectif | 
+				effectif <= (self placesGroupes: section) ifFalse: [^false] ].
+			^ true]
+		ifFalse: [^ super sontLogeables: unEnsemble ]! !
+
+!Classe9e methodsFor: 'metric' stamp: 'hlsf 6/25/2025 18:44:01'!
+placesGroupes: optionOuSection
+	^ self estDR 
+		ifTrue: [super placesGroupes: optionOuSection]
+		ifFalse: [
+			optionOuSection isNil 
+				ifTrue:  [capacite - self effectif]
+				ifFalse: [	optionOuSection = #SAE ifFalse: [self error: 'Option SAE attentdue'].
+					super placesGroupes: #SAE ] ]! !
+
+!Classe9e methodsFor: 'accessing' stamp: 'hlsf 6/25/2025 18:45:17'!
 ajouterDansUnGroupe: unEleve 
-	unEleve option ifNotNil: [
-		unEleve option = #SAE ifFalse: [self error: 'Option SAE attentdue'].
-		groupes first ajouterEleve: unEleve]! !
+	self estDR
+		ifTrue:  [ | groupesCompatibles | 
+			groupesCompatibles := groupes select: [:groupe | 
+				groupe section = unEleve section "***" and: [groupe estPlein not] ].
+			groupesCompatibles ifEmpty: [self error: 'Aucune place dans un groupe'].
+			groupesCompatibles shuffled first ajouterEleve: unEleve ]
+		ifFalse: [
+			unEleve option ifNotNil: [
+			unEleve option = #SAE ifFalse: [self error: 'Option SAE attendue'].
+			groupes first ajouterEleve: unEleve] ]! !
 
 !Classe9e methodsFor: 'accessing' stamp: 'hlsf 6/8/2025 12:13:16'!
 enleverDeGroupe: unEleve
@@ -719,7 +763,7 @@ nom: anObject
 note
 	^ note! !
 
-!Eleve methodsFor: 'accessing' stamp: 'hlsf 4/21/2025 10:03:16'!
+!Eleve methodsFor: 'accessing' stamp: 'hlsf 6/25/2025 19:11:33'!
 note: aStringOrNumber
 	aStringOrNumber ifNil: [^ self].
 	note := aStringOrNumber isNumber 
@@ -820,13 +864,13 @@ trouble: anObject
 	trouble := trouble ifNotNil: [trouble | anObject] ifNil: [anObject]
 	! !
 
-!Eleve methodsFor: 'printing' stamp: 'hlsf 6/8/2025 11:08:05'!
+!Eleve methodsFor: 'printing' stamp: 'hlsf 6/25/2025 21:17:25'!
 descriptionOn: str
-	str nextPutAll: nom bold; space; nextPutAll: prenom bold.
-	str 	nextPutAll: sexe asString super; lf.
+	str nextPutAll: nom bold; space; nextPutAll: prenom bold; space.
+	str nextPut: (self estFille ifTrue: [$♀] ifFalse: [$♂]); lf.
 	str nextPutAll: 'Provenance : '; nextPutAll: (ancienneClasse ifNil: ['inconnue']); lf.
 	self avecTrouble ifTrue: [str nextPutAll: 'Dyslexique'; lf].
-	str nextPutAll: 'Note : '; print: note; lf.
+	str nextPutAll: 'Moyenne : '; print: note; lf.
 	str nextPutAll: 'Section : '; print: section.
 
 	option ifNotNil: [
@@ -842,14 +886,17 @@ descriptionOn: str
 		str lf; nextPutAll: 'A séparer de '.
 		separerDe printElementsOn: str]! !
 
-!Eleve methodsFor: 'printing' stamp: 'hlsf 6/7/2025 11:51:39'!
+!Eleve methodsFor: 'printing' stamp: 'hlsf 6/25/2025 18:47:30'!
 printOn: aStream
 	aStream nextPutAll: (nom ifNil: ['XXX']);
 		nextPut: $.;
 		nextPutAll: (prenom ifNil: ['YYY']).
 	option ifNotNil: [
 		aStream nextPut: $/;
-			nextPutAll: option]! !
+			nextPutAll: option].
+	(classeAttribuee notNil and: [classeAttribuee estDR]) ifTrue: [
+		aStream nextPut: $/;
+			nextPutAll: section]! !
 
 !Eleve methodsFor: 'testing' stamp: 'hlsf 5/14/2025 08:24:39'!
 avecTrouble
@@ -989,6 +1036,14 @@ importerContraintesDoyen: fichierCSV
 		upToEnd.
 	^ (eleves select: [:record | record estValide ]) asOrderedCollection! !
 
+!Eleve9e methodsFor: 'accessing' stamp: 'hlsf 6/25/2025 19:43:05'!
+note: aStringOrNumber
+	aStringOrNumber ifNil: [^ self].
+	note := aStringOrNumber isNumber 
+		ifTrue: [aStringOrNumber ]
+		ifFalse: [
+			 [aStringOrNumber asNumber] on: Error  do: 12]! !
+
 !Eleve9e methodsFor: 'accessing' stamp: 'hlsf 6/5/2025 14:39:32'!
 section: uneSection
 	section := uneSection asUppercase asSymbol.
@@ -1000,7 +1055,12 @@ section: uneSection
 est9e
 	^ true! !
 
-!Eleve9e class methodsFor: 'instance creation' stamp: 'hlsf 6/21/2025 11:25:08'!
+!Eleve9e methodsFor: 'initialization' stamp: 'hlsf 6/25/2025 19:26:19'!
+initialize
+	super initialize.
+	note := 12! !
+
+!Eleve9e class methodsFor: 'instance creation' stamp: 'hlsf 6/25/2025 19:14:31'!
 importerContraintesEcole: fichierCSV
 " Importation des données issues du relevé d'information en école primaire "
 	| eleves |
@@ -1052,7 +1112,7 @@ initialize
 	" Pas de note de 4 par defaut comme dans le parent, nous voulons l'importer "
 	note := nil.! !
 
-!EleveNote class methodsFor: 'as yet unclassified' stamp: 'hlsf 6/3/2025 15:57:50'!
+!EleveNote class methodsFor: 'as yet unclassified' stamp: 'hlsf 6/25/2025 19:14:36'!
 importerNotes: fichierCSV
 "
 	Importation des notes élèves depuis un fichier GECO comprenant les champs utiles suivants :
@@ -1065,7 +1125,7 @@ importerNotes: fichierCSV
 		recordClass: self;
 		addIgnoredFields: 2;
 		addField: #patronyme:;
-		addIgnoredFields: 9;
+		addIgnoredFields: 3;
 		addField: #note: ;
 		upToEnd.
 	^ notes! !
@@ -1133,6 +1193,12 @@ option: anObject
 places
 	^ capacite - self effectif ! !
 
+!GroupeOption methodsFor: 'accessing' stamp: 'hlsf 6/25/2025 18:28:54'!
+section
+	" for code semantic"
+
+	^ option! !
+
 !GroupeOption methodsFor: 'printing' stamp: 'hlsf 6/8/2025 11:33:11'!
 printOn: stream
 	stream 	nextPutAll: 'groupe ';
@@ -1180,9 +1246,10 @@ filtre: array
 	filtre := array
 	! !
 
-!Volee methodsFor: 'accessing' stamp: 'hlsf 6/19/2025 14:52:21'!
+!Volee methodsFor: 'accessing' stamp: 'hlsf 6/25/2025 18:15:01'!
 filtres
-	^ #( #( R3 MI) #(R2) #(R1) )! !
+
+	self subclassResponsibility! !
 
 !Volee methodsFor: 'affecter' stamp: 'hlsf 6/19/2025 14:51:22'!
 calculer
@@ -1205,7 +1272,7 @@ preparerDonnees
 			eleve classeAttribuee ifNotNil: [:classe | classe enleverEleve: eleve]] ].
 	self	collecterElevesEnsemble! !
 
-!Volee methodsFor: 'affecter' stamp: 'hlsf 6/19/2025 14:51:35'!
+!Volee methodsFor: 'affecter' stamp: 'hlsf 6/25/2025 21:40:34'!
 ventilerElevesAvecTrouble
 " Ventiler les élèves avec troubles et non encore affectés dans les classes avec place.
   Trier les classes selon le nombre d'élève avec trouble, vérifier les incompatibilités entre élèves "
@@ -1216,8 +1283,12 @@ ventilerElevesAvecTrouble
 			ifFound: [:saClasse | 
 				saClasse ajouterEleves: ensemble.
 				ensemble size > 1 ifTrue: [elevesEnsemble remove: ensemble ]]
-			ifNone: [Transcript show: unEleve; show: ' pas de classe compatible. Avec: '; 
-				show: ensemble; cr] ]
+			ifNone: [
+				Transcript 
+					show: 'Elève avec trouble : ';
+					show: unEleve; 
+					show: ' pas de classe compatible avec '; 
+					show: ensemble; cr] ]
 		! !
 
 !Volee methodsFor: 'affecter' stamp: 'hlsf 6/19/2025 14:52:01'!
@@ -1412,25 +1483,25 @@ filtrerSelon: unFiltre
 importPath
 	^ DirectoryEntry projectBaseDirectory / 'import'! !
 
-!Volee methodsFor: 'import/export' stamp: 'hlsf 6/19/2025 14:57:31'!
+!Volee methodsFor: 'import/export' stamp: 'hlsf 6/25/2025 08:09:59'!
 importerGroupes
 	| groupes |
 	groupes := GroupeOption importer: self importPath // csvGroupes.
 	groupes do: [:unGroupe | 
-		(self trouverClasse: unGroupe classe) ajouterGroupe: unGroupe].! !
+		(self trouverClasse: unGroupe classe) 
+			ifNil: [self error: 'Classe non trouvée pour ', unGroupe printString, ', indique ', unGroupe classe] 
+			ifNotNil: [:uneClasse | uneClasse ajouterGroupe: unGroupe] ]! !
 
-!Volee methodsFor: 'import/export' stamp: 'hlsf 6/19/2025 14:58:03'!
-insererContraintesDe: infoEleve dans: unEleve
+!Volee methodsFor: 'import/export' stamp: 'hlsf 6/25/2025 19:40:00'!
+insererContraintesDoyenDe: infoEleve dans: unEleve
 	unEleve 
 		classeAttribuee: infoEleve classeAttribuee ;
 		classesExclues: infoEleve classesExclues ;
 		trouble: infoEleve avecTrouble;
 		mettreAvec: infoEleve mettreAvec ;
-		separerDe: infoEleve separerDe ;
-		note: infoEleve note
-! !
+		separerDe: infoEleve separerDe! !
 
-!Volee methodsFor: 'import/export' stamp: 'hlsf 6/21/2025 10:15:06'!
+!Volee methodsFor: 'import/export' stamp: 'hlsf 6/25/2025 19:40:33'!
 insererContraintesDoyens
 	| contraintesEleves |
 	csvContraintesDoyen ifNil: [^ self].
@@ -1440,7 +1511,7 @@ insererContraintesDoyens
 	" insertions des contraintes "
 	eleves do: [:unEleve | 
 		(self trouverEleve: unEleve patronyme dans: contraintesEleves)
-			ifNotNil:  [:infoEleve |	self insererContraintesDe: infoEleve dans: unEleve ]
+			ifNotNil:  [:infoEleve |	self insererContraintesDoyenDe: infoEleve dans: unEleve ]
 			ifNil: [Transcript 
 					show: 'Pas de contrainte pour ';
 					show: unEleve; cr] ]! !
@@ -1596,7 +1667,7 @@ score
 " Score en pourcent, le plus haut le meilleur "
 	^ (100 - (self scoring * 100)) printStringFractionDigits: 1! !
 
-!Volee methodsFor: 'metriques' stamp: 'hlsf 6/19/2025 14:53:53'!
+!Volee methodsFor: 'metriques' stamp: 'hlsf 6/25/2025 19:43:58'!
 scoring
 "
 	Métrique de [0 ; 1] pour comparer deux volées entre elles, le plus bas le meilleur
@@ -1606,13 +1677,14 @@ scoring
 	c1 := self ecartType / 1.5.
 	c2 := self elevesSeuls / 10.0 .
 	c3 := self ecartsFilleGarcon.
-	^ (0.7 * c1) + (0.1 * c2) + (0.2 * c3)! !
+	^ (0.8 * c1) + (0.1 * c2) + (0.1 * c3)! !
 
-!Volee methodsFor: 'metriques' stamp: 'hlsf 6/19/2025 14:51:22'!
+!Volee methodsFor: 'metriques' stamp: 'hlsf 6/25/2025 21:29:57'!
 verifierScore
 " Nous cherchons la volée avec le meilleur score "
 	^ (voleePreferee isNil 
-	or: [voleePreferee scoring > self scoring ])
+	or: [voleePreferee scoring > self scoring ]
+	or: [voleePreferee checks not and: [self checks] ] )
 		ifTrue: [
 			'\o/ Volée avec un meilleur arrangement !!' print.
 			voleePreferee := self veryDeepCopy.
@@ -1622,7 +1694,7 @@ verifierScore
 voleePreferee
 	^ voleePreferee ! !
 
-!Volee methodsFor: 'printing' stamp: 'hlsf 6/19/2025 14:55:20'!
+!Volee methodsFor: 'printing' stamp: 'hlsf 6/25/2025 09:17:44'!
 printOn: stream
 	stream nextPutAll: 'Élèves : '; 	print: self nbEleves ; lf;
 		nextPutAll: 'Filles : ' magenta bold; print: self filles; lf;
@@ -1630,11 +1702,11 @@ printOn: stream
 		nextPutAll: 'Élèves isolés : '; print: self elevesSeuls ; lf;		
 		nextPutAll: 'Classes : '; print: self nbClasses; lf;
 		nextPutAll: 'Capacité classes : '; print: self capaciteClasses ;lf;
-		nextPutAll: 'Élèves sans classe: '; print: self elevesSansClasse size; lf;
-		nextPutAll: 'Note moy (MA+FR+AL): '; nextPutAll: (self note printStringFractionDigits: 1); lf;
+		nextPutAll: 'Élèves sans classe : '; print: self elevesSansClasse size; lf;
+		nextPutAll: 'Moy (MA+ 2 × FR) : '; nextPutAll: (self note printStringFractionDigits: 1); lf;
 		nextPutAll: 'Score : '; nextPutAll: self score; nextPut: $%; lf;
 		nextPutAll: 'Ecart type : '; nextPutAll: (self ecartType printStringFractionDigits: 2); lf;		
-		nextPutAll: 'Vérifications: '; newLineTab ;
+		nextPutAll: 'Vérifications : '; newLineTab ;
 		nextPutAll: '- élèves ensemble '; print: self checkElevesEnsembles ; newLineTab ;
 		nextPutAll: '- élèves séparés '; print: self checkElevesSepares ! !
 
@@ -1649,7 +1721,7 @@ resume
 		nextPutAll: ' σ='; nextPutAll: (self ecartType printStringFractionDigits: 2);
 		nextPutAll: ' Vérif. '; print: self checks]! !
 
-!Volee methodsFor: 'testing' stamp: 'hlsf 6/21/2025 12:32:19'!
+!Volee methodsFor: 'testing' stamp: 'hlsf 6/25/2025 12:36:25'!
 checkElevesEnsembles
 "
 	Vérifie si les élèves devant être ensemble sont bien ensemble
@@ -1663,10 +1735,9 @@ checkElevesEnsembles
 			ifNotNil: [:avec |
 		(avec allSatisfy: [:autreEleve | 
 			unEleve classeAttribuee = autreEleve classeAttribuee ]) not ] ].
-	elevesNonAccompagnes print.
 	^ elevesNonAccompagnes isEmpty! !
 
-!Volee methodsFor: 'testing' stamp: 'hlsf 6/21/2025 12:32:05'!
+!Volee methodsFor: 'testing' stamp: 'hlsf 6/25/2025 12:36:32'!
 checkElevesSepares
 "
 	Vérifie si les élèves devant être séparés le sont bien
@@ -1680,7 +1751,6 @@ checkElevesSepares
 			ifNotNil: [:separe |
 				separe anySatisfy: [:autreEleve | 
 					unEleve classeAttribuee = autreEleve classeAttribuee ] ] ].
-	elevesNonSepares print.
 	^ elevesNonSepares isEmpty! !
 
 !Volee methodsFor: 'testing' stamp: 'hlsf 6/19/2025 14:54:27'!
@@ -1724,9 +1794,9 @@ insererNotesEleves
 					show: 'Pas de note pour ';
 					show: unEleve; cr] ]! !
 
-!Volee10 methodsFor: 'initialization' stamp: 'hlsf 6/8/2025 17:40:37'!
+!Volee10 methodsFor: 'initialization' stamp: 'hlsf 6/25/2025 18:16:18'!
 filtres
-	^ #( #( LS MI) #(LC) #(CT) )! !
+	^ #( (LS MI) (LC) (CT)  )! !
 
 !Volee10 methodsFor: 'initialization' stamp: 'hlsf 6/21/2025 16:17:19'!
 importer
@@ -1750,6 +1820,22 @@ classeClass
 eleveClass
 	^ Eleve ! !
 
+!Volee10 methodsFor: 'as yet unclassified' stamp: 'hlsf 6/25/2025 09:17:17'!
+printOn: stream
+	stream nextPutAll: 'Élèves : '; 	print: self nbEleves ; lf;
+		nextPutAll: 'Filles : ' magenta bold; print: self filles; lf;
+		nextPutAll: 'Garçons : ' blue bold ; print: self garcons ; lf;
+		nextPutAll: 'Élèves isolés : '; print: self elevesSeuls ; lf;		
+		nextPutAll: 'Classes : '; print: self nbClasses; lf;
+		nextPutAll: 'Capacité classes : '; print: self capaciteClasses ;lf;
+		nextPutAll: 'Élèves sans classe : '; print: self elevesSansClasse size; lf;
+		nextPutAll: 'Moy. géné. : '; nextPutAll: (self note printStringFractionDigits: 1); lf;
+		nextPutAll: 'Score : '; nextPutAll: self score; nextPut: $%; lf;
+		nextPutAll: 'Ecart type : '; nextPutAll: (self ecartType printStringFractionDigits: 2); lf;		
+		nextPutAll: 'Vérifications : '; newLineTab ;
+		nextPutAll: '- élèves ensemble '; print: self checkElevesEnsembles ; newLineTab ;
+		nextPutAll: '- élèves séparés '; print: self checkElevesSepares ! !
+
 !Volee11 methodsFor: 'import/export' stamp: 'hlsf 4/25/2025 16:31:02'!
 exportPath
 	^ DirectoryEntry projectBaseDirectory / 'export' / 'Volee11e'! !
@@ -1762,7 +1848,7 @@ est9e
 exportPath
 	^ DirectoryEntry projectBaseDirectory / 'export' / 'Volee9e'! !
 
-!Volee9 methodsFor: 'import/export' stamp: 'hlsf 6/21/2025 10:14:06'!
+!Volee9 methodsFor: 'import/export' stamp: 'hlsf 6/25/2025 19:41:08'!
 insererContraintesEcole
 	| contraintesEcole |
 	csvContraintesEcole ifNil: [^ self].
@@ -1772,10 +1858,21 @@ insererContraintesEcole
 	" insertions des contraintes "
 	eleves do: [:unEleve | 
 		(self trouverEleve: unEleve patronyme dans: contraintesEcole )
-			ifNotNil:  [:infoEleve |	self insererContraintesDe: infoEleve dans: unEleve ]
+			ifNotNil:  [:infoEleve |	self insererContraintesEcoleDe: infoEleve dans: unEleve ]
 			ifNil: [Transcript 
 					show: 'Pas de contrainte pour ';
 					show: unEleve; cr] ]! !
+
+!Volee9 methodsFor: 'import/export' stamp: 'hlsf 6/25/2025 19:41:23'!
+insererContraintesEcoleDe: infoEleve dans: unEleve
+	unEleve 
+		classeAttribuee: infoEleve classeAttribuee ;
+		classesExclues: infoEleve classesExclues ;
+		trouble: infoEleve avecTrouble;
+		mettreAvec: infoEleve mettreAvec ;
+		separerDe: infoEleve separerDe ;
+		note: infoEleve note
+! !
 
 !Volee9 methodsFor: 'meta' stamp: 'hlsf 6/6/2025 13:55:37'!
 classeClass
@@ -1798,6 +1895,10 @@ importer
 		filtrerSelon: filtre;
 		insererContraintesEcole;
 		insererContraintesDoyens! !
+
+!Volee9 methodsFor: 'accessing' stamp: 'hlsf 6/25/2025 18:15:58'!
+filtres
+	^ #( (R3 MI) (R1 R2) (R2) (R1) )! !
 
 !SuiviEleve methodsFor: 'initialization' stamp: 'hlsf 7/26/2024 17:01:02'!
 initialize
@@ -1949,7 +2050,7 @@ ajoutA: row bouton: nom action: symbol
 			label: 'Choisir fichier').
 	^ button! !
 
-!VoleeWindow methodsFor: 'GUI building' stamp: 'hlsf 6/8/2025 14:14:56'!
+!VoleeWindow methodsFor: 'GUI building' stamp: 'hlsf 6/25/2025 21:09:47'!
 buildComputeToolbar
 	| row |
 	 qtyEntry := SimpleNumberEntryMorph 
@@ -1968,8 +2069,7 @@ buildComputeToolbar
 		addMorph: (PluggableButtonMorph 
 			model: self
 			action: #reset 
-			label: 'Reset' ::
-			enableSelector: #isComputed );
+			label: 'Reset');
 		addMorph: scoreLabel;
 		addMorph: (PluggableButtonMorph 
 			model: self 
@@ -2274,12 +2374,12 @@ on: unEleve
 estClasse
 	^ false! !
 
-!Collection methodsFor: '*Doyen' stamp: 'hlsf 4/23/2025 21:27:37'!
+!Collection methodsFor: '*Doyen' stamp: 'hlsf 6/25/2025 13:00:52'!
 closeToAllOf: aCollection 
 	"Answer wether all the elements of aCollection are close to the ones in the receiver."
 	
 	aCollection do: [:elem | 
-		(self anySatisfy: [:otherElem | (elem distanceTo: otherElem) < 2]) 
+		(self anySatisfy: [:otherElem | (elem distanceTo: otherElem) < 3]) 
 			ifFalse: [^ false] ].
 	^ true! !
 
