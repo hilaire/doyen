@@ -1,6 +1,6 @@
-'From Cuis7.3 [latest update: #7099] on 25 June 2025 at 10:33:51 pm'!
+'From Cuis7.3 [latest update: #7099] on 29 June 2025 at 11:06:51 pm'!
 'Description '!
-!provides: 'Doyen' 1 59!
+!provides: 'Doyen' 1 61!
 !requires: 'Goodies' 1 11 nil!
 !requires: 'Neo-CSV-Core' 1 2 nil!
 !requires: 'UI-Panel' 1 123 nil!
@@ -1449,7 +1449,7 @@ csvGroupes: fichierGroupes
 exportPath
 	self subclassResponsibility ! !
 
-!Volee methodsFor: 'import/export' stamp: 'hlsf 6/21/2025 17:32:06'!
+!Volee methodsFor: 'import/export' stamp: 'hlsf 6/29/2025 22:50:19'!
 exporterClasses
 	| path |
 	path := self exportPath / (String streamContents: [:str |
@@ -1464,9 +1464,9 @@ exporterClasses
 		writer 
 			separator: $; ;
 			fieldWriter: #raw;
-			nextPut: #(NOM PRENOM SEXE PROFIL GROUPE).
+			nextPut: #(NOM PRENOM SEXE PROFIL GROUPE NOTE).
 		uneClasse eleves do: [:unEleve | writer nextPut: {unEleve nom . unEleve prenom . 
-			unEleve sexe. unEleve option. uneClasse groupeDe: unEleve} ].
+			unEleve sexe. unEleve option. uneClasse groupeDe: unEleve. unEleve note} ].
 		stream close].
 	self inform: 'Volée sauvegardée dans le dossier 
 ', path pathName ! !
@@ -1667,17 +1667,18 @@ score
 " Score en pourcent, le plus haut le meilleur "
 	^ (100 - (self scoring * 100)) printStringFractionDigits: 1! !
 
-!Volee methodsFor: 'metriques' stamp: 'hlsf 6/25/2025 19:43:58'!
+!Volee methodsFor: 'metriques' stamp: 'hlsf 6/26/2025 11:48:02'!
 scoring
 "
 	Métrique de [0 ; 1] pour comparer deux volées entre elles, le plus bas le meilleur
 "
-	| c1 c2 c3 |
+	| c1 c2 c3 c4 |
 	" 6 est la note maximale ⇒ σ ∈ [0 ; 3]"
 	c1 := self ecartType / 1.5.
 	c2 := self elevesSeuls / 10.0 .
 	c3 := self ecartsFilleGarcon.
-	^ (0.8 * c1) + (0.1 * c2) + (0.1 * c3)! !
+	c4 := self elevesSansClasse size / eleves size.
+	^ (0.7 * c1) + (0.1 * c2) + (0.1 * c3) + (0.1 * c4)! !
 
 !Volee methodsFor: 'metriques' stamp: 'hlsf 6/25/2025 21:29:57'!
 verifierScore
