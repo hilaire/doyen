@@ -1,6 +1,6 @@
-'From Cuis7.3 [latest update: #7099] on 29 June 2025 at 11:06:51 pm'!
+'From Cuis7.3 [latest update: #7099] on 30 June 2025 at 7:47:05 pm'!
 'Description '!
-!provides: 'Doyen' 1 61!
+!provides: 'Doyen' 1 62!
 !requires: 'Goodies' 1 11 nil!
 !requires: 'Neo-CSV-Core' 1 2 nil!
 !requires: 'UI-Panel' 1 123 nil!
@@ -864,7 +864,7 @@ trouble: anObject
 	trouble := trouble ifNotNil: [trouble | anObject] ifNil: [anObject]
 	! !
 
-!Eleve methodsFor: 'printing' stamp: 'hlsf 6/25/2025 21:17:25'!
+!Eleve methodsFor: 'printing' stamp: 'hlsf 6/30/2025 18:13:29'!
 descriptionOn: str
 	str nextPutAll: nom bold; space; nextPutAll: prenom bold; space.
 	str nextPut: (self estFille ifTrue: [$♀] ifFalse: [$♂]); lf.
@@ -872,9 +872,8 @@ descriptionOn: str
 	self avecTrouble ifTrue: [str nextPutAll: 'Dyslexique'; lf].
 	str nextPutAll: 'Moyenne : '; print: note; lf.
 	str nextPutAll: 'Section : '; print: section.
-
-	option ifNotNil: [
-		str lf; nextPutAll: 'Option : '; print: option].
+	mobile ifFalse: [str lf;  nextPutAll: 'Classe attribuée' red].
+	option ifNotNil: [str lf; nextPutAll: 'Option : '; print: option].
 
 	classesExclues ifNotNil: [
 		str lf; nextPutAll: 'Exclu de '.
@@ -885,6 +884,12 @@ descriptionOn: str
 	separerDe ifNotNil: [
 		str lf; nextPutAll: 'A séparer de '.
 		separerDe printElementsOn: str]! !
+
+!Eleve methodsFor: 'printing' stamp: 'hlsf 6/30/2025 14:53:10'!
+printMettreAvec
+	^ mettreAvec 
+		ifNotNil: [String streamContents: [:str | mettreAvec printElementsOn: str] ]
+		ifNil: ['']! !
 
 !Eleve methodsFor: 'printing' stamp: 'hlsf 6/25/2025 18:47:30'!
 printOn: aStream
@@ -897,6 +902,12 @@ printOn: aStream
 	(classeAttribuee notNil and: [classeAttribuee estDR]) ifTrue: [
 		aStream nextPut: $/;
 			nextPutAll: section]! !
+
+!Eleve methodsFor: 'printing' stamp: 'hlsf 6/30/2025 14:54:50'!
+printSeparerDe
+	^ separerDe 
+		ifNotNil: [String streamContents: [:str | separerDe printElementsOn: str] ]
+		ifNil: ['']! !
 
 !Eleve methodsFor: 'testing' stamp: 'hlsf 5/14/2025 08:24:39'!
 avecTrouble
@@ -1251,14 +1262,15 @@ filtres
 
 	self subclassResponsibility! !
 
-!Volee methodsFor: 'affecter' stamp: 'hlsf 6/19/2025 14:51:22'!
+!Volee methodsFor: 'affecter' stamp: 'hlsf 6/30/2025 18:02:43'!
 calculer
 	" Calculer une nouvelle volée "
-	self preparerDonnees;
-		ventilerElevesSAE;
-		ventilerElevesAvecTrouble ;
-		ventilerElevesEnsemble ;
-		ventilerSelonSexe.
+	self preparerDonnees.
+
+	self	ventilerElevesSAE.
+	self	ventilerElevesEnsemble.
+	self ventilerElevesAvecTrouble.
+	self	ventilerSelonSexe.
 				
 	self verifierScore.
 ! !
@@ -1272,10 +1284,12 @@ preparerDonnees
 			eleve classeAttribuee ifNotNil: [:classe | classe enleverEleve: eleve]] ].
 	self	collecterElevesEnsemble! !
 
-!Volee methodsFor: 'affecter' stamp: 'hlsf 6/25/2025 21:40:34'!
+!Volee methodsFor: 'affecter' stamp: 'hlsf 6/30/2025 18:02:17'!
 ventilerElevesAvecTrouble
 " Ventiler les élèves avec troubles et non encore affectés dans les classes avec place.
   Trier les classes selon le nombre d'élève avec trouble, vérifier les incompatibilités entre élèves "
+	
+	'Ventiller élèves avec troubles' print.
 	self elevesAvecTrouble shuffled do: [:unEleve | | ensemble |
 		ensemble := self mettreAvec: unEleve.
 		(self classesAvecPlace shuffled sort: [:cl1 :cl2 | cl1 trouble < cl2 trouble]) 
@@ -1291,11 +1305,12 @@ ventilerElevesAvecTrouble
 					show: ensemble; cr] ]
 		! !
 
-!Volee methodsFor: 'affecter' stamp: 'hlsf 6/19/2025 14:52:01'!
+!Volee methodsFor: 'affecter' stamp: 'hlsf 6/30/2025 18:02:02'!
 ventilerElevesEnsemble
 "
 	Ventiler les groupes d'élèves ensemble dans les classes avec place.
 "
+	'Ventiler élèves ensembles' print.
 	elevesEnsemble copy do: [:unGroupe |
 		self classesAvecPlace shuffled
 			detect: [:uneClasse | uneClasse sontCompatibles: unGroupe	]
@@ -1305,11 +1320,12 @@ ventilerElevesEnsemble
 			ifNone: [Transcript show: unGroupe ; show: ' pas de place pour ce groupe'; cr]
 			]! !
 
-!Volee methodsFor: 'affecter' stamp: 'hlsf 6/21/2025 13:00:28'!
+!Volee methodsFor: 'affecter' stamp: 'hlsf 6/30/2025 18:01:50'!
 ventilerElevesSAE
 "
 	Ventiler les élèves dans la classe SAE
 "
+	'Ventiler élèves SAE' print.
 	self elevesSAE shuffled do: [:unEleve | | ensemble |
 		ensemble := self mettreAvec: unEleve.
 		self classesAvecPlace
@@ -1320,11 +1336,12 @@ ventilerElevesSAE
 			ifNone: [	Transcript show: unEleve; show: ' pas de classe SAE '; cr] ]
 		! !
 
-!Volee methodsFor: 'affecter' stamp: 'hlsf 6/19/2025 14:52:11'!
+!Volee methodsFor: 'affecter' stamp: 'hlsf 6/30/2025 18:02:28'!
 ventilerSelonSexe
 "
 	Ventiler tous les élèves restant en tenant compte du sexe
 "
+	'Ventiler selon sexe' print.
 	self elevesSansClasse shuffled do: [:unEleve | | sonSexe |
 		sonSexe := unEleve estFille ifTrue: [#filles] ifFalse: [#garcons].
 		(self classesAvecPlace shuffled sort: [:cl1 :cl2 | (cl1 perform: sonSexe) < (cl2 perform: sonSexe) ]) 
@@ -1382,6 +1399,32 @@ elevesDansClasses
 		inject: OrderedCollection new 
 		into: [:elevesDansClasses :classe | 
 			elevesDansClasses addAll: classe eleves; yourself]! !
+
+!Volee methodsFor: 'eleves' stamp: 'hlsf 6/30/2025 16:54:12'!
+elevesNonSepares
+" Collecte les élèves non séparés et devant l'être "
+	| elevesNonSepares |
+	" Trouver les élèves non séparés et devant l'être "
+	elevesNonSepares := eleves select: [:unEleve |
+		unEleve separerDe 
+			ifNil: [false] 
+			ifNotNil: [:separe |
+				separe anySatisfy: [:autreEleve | 
+					unEleve classeAttribuee = autreEleve classeAttribuee ] ] ].
+	^ elevesNonSepares! !
+
+!Volee methodsFor: 'eleves' stamp: 'hlsf 6/30/2025 17:00:15'!
+elevesPasEnsemble
+" Collecte les élèves qui auraient du être ensemble "
+	| elevesNonAccompagnes |
+	" Trouver les élèves non accompagnés et devant l'être "
+	elevesNonAccompagnes := eleves select: [:unEleve |
+		unEleve mettreAvec
+			ifNil: [false] 
+			ifNotNil: [:avec |
+		(avec allSatisfy: [:autreEleve | 
+			unEleve classeAttribuee = autreEleve classeAttribuee ]) not ] ].
+	^ elevesNonAccompagnes! !
 
 !Volee methodsFor: 'eleves' stamp: 'hlsf 6/19/2025 14:50:35'!
 elevesSAE
@@ -1449,7 +1492,7 @@ csvGroupes: fichierGroupes
 exportPath
 	self subclassResponsibility ! !
 
-!Volee methodsFor: 'import/export' stamp: 'hlsf 6/29/2025 22:50:19'!
+!Volee methodsFor: 'import/export' stamp: 'hlsf 6/30/2025 14:54:58'!
 exporterClasses
 	| path |
 	path := self exportPath / (String streamContents: [:str |
@@ -1464,9 +1507,10 @@ exporterClasses
 		writer 
 			separator: $; ;
 			fieldWriter: #raw;
-			nextPut: #(NOM PRENOM SEXE PROFIL GROUPE NOTE).
-		uneClasse eleves do: [:unEleve | writer nextPut: {unEleve nom . unEleve prenom . 
-			unEleve sexe. unEleve option. uneClasse groupeDe: unEleve. unEleve note} ].
+			nextPut: #(NOM PRENOM SEXE PROFIL GROUPE TROUBLE NOTE PROVENANCE AVEC SEPARE).
+		uneClasse eleves do: [:unEleve | writer nextPut: {unEleve nom . unEleve prenom . unEleve sexe. unEleve option. 
+			uneClasse groupeDe: unEleve. unEleve trouble . unEleve note. unEleve ancienneClasse .
+			unEleve printMettreAvec . unEleve printSeparerDe } ].
 		stream close].
 	self inform: 'Volée sauvegardée dans le dossier 
 ', path pathName ! !
@@ -1667,25 +1711,27 @@ score
 " Score en pourcent, le plus haut le meilleur "
 	^ (100 - (self scoring * 100)) printStringFractionDigits: 1! !
 
-!Volee methodsFor: 'metriques' stamp: 'hlsf 6/26/2025 11:48:02'!
+!Volee methodsFor: 'metriques' stamp: 'hlsf 6/30/2025 18:52:55'!
 scoring
 "
 	Métrique de [0 ; 1] pour comparer deux volées entre elles, le plus bas le meilleur
 "
-	| c1 c2 c3 c4 |
+	| c1 c2 c3 c4 c5 c6 |
 	" 6 est la note maximale ⇒ σ ∈ [0 ; 3]"
 	c1 := self ecartType / 1.5.
-	c2 := self elevesSeuls / 10.0 .
+	c2 := self elevesSeuls / 15.0 .
 	c3 := self ecartsFilleGarcon.
-	c4 := self elevesSansClasse size / eleves size.
-	^ (0.7 * c1) + (0.1 * c2) + (0.1 * c3) + (0.1 * c4)! !
+	c4 := self elevesSansClasse size * 10 / eleves size.
+	"c5 := self checkElevesSepares ifFalse: [1] ifTrue: [0]."
+	c5 := self elevesNonSepares size / 10.
+	c6 := self elevesPasEnsemble size /10.
+	^ (0.1 * c1) + (0.1 * c2) + (0.1 * c3) + (0.3 * c4) + ( 0.3 * c5) + (0.1 * c6)! !
 
-!Volee methodsFor: 'metriques' stamp: 'hlsf 6/25/2025 21:29:57'!
+!Volee methodsFor: 'metriques' stamp: 'hlsf 6/30/2025 17:51:50'!
 verifierScore
 " Nous cherchons la volée avec le meilleur score "
 	^ (voleePreferee isNil 
-	or: [voleePreferee scoring > self scoring ]
-	or: [voleePreferee checks not and: [self checks] ] )
+	or: [voleePreferee scoring > self scoring ] )
 		ifTrue: [
 			'\o/ Volée avec un meilleur arrangement !!' print.
 			voleePreferee := self veryDeepCopy.
@@ -1695,8 +1741,9 @@ verifierScore
 voleePreferee
 	^ voleePreferee ! !
 
-!Volee methodsFor: 'printing' stamp: 'hlsf 6/25/2025 09:17:44'!
+!Volee methodsFor: 'printing' stamp: 'hlsf 6/30/2025 17:30:45'!
 printOn: stream
+	| desEleves |
 	stream nextPutAll: 'Élèves : '; 	print: self nbEleves ; lf;
 		nextPutAll: 'Filles : ' magenta bold; print: self filles; lf;
 		nextPutAll: 'Garçons : ' blue bold ; print: self garcons ; lf;
@@ -1706,10 +1753,15 @@ printOn: stream
 		nextPutAll: 'Élèves sans classe : '; print: self elevesSansClasse size; lf;
 		nextPutAll: 'Moy (MA+ 2 × FR) : '; nextPutAll: (self note printStringFractionDigits: 1); lf;
 		nextPutAll: 'Score : '; nextPutAll: self score; nextPut: $%; lf;
-		nextPutAll: 'Ecart type : '; nextPutAll: (self ecartType printStringFractionDigits: 2); lf;		
-		nextPutAll: 'Vérifications : '; newLineTab ;
-		nextPutAll: '- élèves ensemble '; print: self checkElevesEnsembles ; newLineTab ;
-		nextPutAll: '- élèves séparés '; print: self checkElevesSepares ! !
+		nextPutAll: 'Ecart type : '; nextPutAll: (self ecartType printStringFractionDigits: 2); lf.
+	desEleves := self elevesPasEnsemble.
+	desEleves ifNotEmpty: [
+		stream nextPutAll: '- élèves pas ensemble : ';
+			nextPutAll: (String streamContents: [:str | desEleves printElementsOn: str]); lf].
+	desEleves := self elevesNonSepares.
+	desEleves ifNotEmpty: [
+		stream	nextPutAll: '- élèves non séparés : ';
+			nextPutAll: (String streamContents: [:str | desEleves printElementsOn: str]); lf]! !
 
 !Volee methodsFor: 'printing' stamp: 'hlsf 6/19/2025 14:55:26'!
 resume
@@ -1722,37 +1774,15 @@ resume
 		nextPutAll: ' σ='; nextPutAll: (self ecartType printStringFractionDigits: 2);
 		nextPutAll: ' Vérif. '; print: self checks]! !
 
-!Volee methodsFor: 'testing' stamp: 'hlsf 6/25/2025 12:36:25'!
+!Volee methodsFor: 'testing' stamp: 'hlsf 6/30/2025 17:00:39'!
 checkElevesEnsembles
-"
-	Vérifie si les élèves devant être ensemble sont bien ensemble
+" Vérifie si les élèves devant être ensemble sont bien ensemble "
+	^ self elevesPasEnsemble isEmpty! !
 
-"
-	| elevesNonAccompagnes |
-	" Trouver les élèves non accompagnés et devant l'être "
-	elevesNonAccompagnes := eleves select: [:unEleve |
-		unEleve mettreAvec
-			ifNil: [false] 
-			ifNotNil: [:avec |
-		(avec allSatisfy: [:autreEleve | 
-			unEleve classeAttribuee = autreEleve classeAttribuee ]) not ] ].
-	^ elevesNonAccompagnes isEmpty! !
-
-!Volee methodsFor: 'testing' stamp: 'hlsf 6/25/2025 12:36:32'!
+!Volee methodsFor: 'testing' stamp: 'hlsf 6/30/2025 16:54:34'!
 checkElevesSepares
-"
-	Vérifie si les élèves devant être séparés le sont bien
-
-"
-	| elevesNonSepares |
-	" Trouver les élèves non séparés et devant l'être "
-	elevesNonSepares := eleves select: [:unEleve |
-		unEleve separerDe 
-			ifNil: [false] 
-			ifNotNil: [:separe |
-				separe anySatisfy: [:autreEleve | 
-					unEleve classeAttribuee = autreEleve classeAttribuee ] ] ].
-	^ elevesNonSepares isEmpty! !
+" Vérifie si les élèves devant être séparés le sont bien "
+	^ self elevesNonSepares isEmpty! !
 
 !Volee methodsFor: 'testing' stamp: 'hlsf 6/19/2025 14:54:27'!
 checks
@@ -1821,8 +1851,9 @@ classeClass
 eleveClass
 	^ Eleve ! !
 
-!Volee10 methodsFor: 'as yet unclassified' stamp: 'hlsf 6/25/2025 09:17:17'!
+!Volee10 methodsFor: 'printing' stamp: 'hlsf 6/30/2025 18:38:48'!
 printOn: stream
+	| desEleves |
 	stream nextPutAll: 'Élèves : '; 	print: self nbEleves ; lf;
 		nextPutAll: 'Filles : ' magenta bold; print: self filles; lf;
 		nextPutAll: 'Garçons : ' blue bold ; print: self garcons ; lf;
@@ -1832,10 +1863,15 @@ printOn: stream
 		nextPutAll: 'Élèves sans classe : '; print: self elevesSansClasse size; lf;
 		nextPutAll: 'Moy. géné. : '; nextPutAll: (self note printStringFractionDigits: 1); lf;
 		nextPutAll: 'Score : '; nextPutAll: self score; nextPut: $%; lf;
-		nextPutAll: 'Ecart type : '; nextPutAll: (self ecartType printStringFractionDigits: 2); lf;		
-		nextPutAll: 'Vérifications : '; newLineTab ;
-		nextPutAll: '- élèves ensemble '; print: self checkElevesEnsembles ; newLineTab ;
-		nextPutAll: '- élèves séparés '; print: self checkElevesSepares ! !
+		nextPutAll: 'Ecart type : '; nextPutAll: (self ecartType printStringFractionDigits: 2); lf.
+	desEleves := self elevesPasEnsemble.
+	desEleves ifNotEmpty: [
+		stream nextPutAll: '- élèves pas ensemble : ';
+			nextPutAll: (String streamContents: [:str | desEleves printElementsOn: str]); lf].
+	desEleves := self elevesNonSepares.
+	desEleves ifNotEmpty: [
+		stream	nextPutAll: '- élèves non séparés : ';
+			nextPutAll: (String streamContents: [:str | desEleves printElementsOn: str]); lf]! !
 
 !Volee11 methodsFor: 'import/export' stamp: 'hlsf 4/25/2025 16:31:02'!
 exportPath
